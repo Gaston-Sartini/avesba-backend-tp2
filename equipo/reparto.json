@@ -1,0 +1,333 @@
+{
+  "traibles": [
+    "README.md",
+    "GUIA.md",
+    "requests.http",
+    "docs/openapi.yaml",
+    "tests/helpers.js",
+    "tests/api/app.test.js",
+    "tests/api/auth.test.js",
+    "tests/api/docs.test.js",
+    "tests/api/events.test.js",
+    "tests/api/game.test.js",
+    "tests/api/metrics.test.js",
+    "tests/api/partidas.test.js",
+    "tests/api/startup.test.js",
+    "tests/api/users.test.js",
+    "tests/api/usersCrud.test.js",
+    "tests/unit/argentineNames.test.js",
+    "tests/unit/buildQuestions.test.js",
+    "tests/unit/buildRanking.test.js",
+    "tests/unit/daos.test.js",
+    "tests/unit/gameRules.test.js",
+    "tests/unit/security.test.js"
+  ],
+  "personas": {
+    "A": {
+      "nombre": "Cuentas",
+      "lecciones": [
+        {
+          "id": "A1",
+          "titulo": "El archivero de usuarios en memoria",
+          "archivos": [
+            "dao/users/UsersMemoryDao.js"
+          ]
+        },
+        {
+          "id": "A2",
+          "titulo": "La tabla users y el DAO con SQLite",
+          "archivos": [
+            "dao/models/UserModel.js",
+            "dao/users/UsersSequelizeDao.js"
+          ]
+        },
+        {
+          "id": "A3",
+          "titulo": "Contraseñas, tokens e intentos de login",
+          "archivos": [
+            "security/passwordHasher.js",
+            "security/tokenService.js",
+            "security/loginAttempts.js"
+          ]
+        },
+        {
+          "id": "A4",
+          "titulo": "Reglas de usuarios: consultar y editar",
+          "archivos": [
+            "usecases/users/getProfile.js",
+            "usecases/users/getUserById.js",
+            "usecases/users/listUsers.js",
+            "usecases/users/updateUser.js"
+          ]
+        },
+        {
+          "id": "A5",
+          "titulo": "Reglas de usuarios: crear, borrar y contraseñas",
+          "archivos": [
+            "usecases/users/createUser.js",
+            "usecases/users/deleteUser.js",
+            "usecases/users/changePassword.js",
+            "usecases/users/resetPassword.js",
+            "usecases/users/makeUserUseCases.js"
+          ]
+        },
+        {
+          "id": "A6",
+          "titulo": "Registro, login y refresh",
+          "archivos": [
+            "usecases/auth/issueTokens.js",
+            "usecases/auth/registerUser.js",
+            "usecases/auth/loginUser.js",
+            "usecases/auth/refreshSession.js",
+            "usecases/auth/seedAdmin.js",
+            "usecases/auth/makeAuthUseCases.js"
+          ]
+        },
+        {
+          "id": "A7",
+          "titulo": "Validar datos con Zod",
+          "archivos": [
+            "schemas/authSchema.js",
+            "schemas/userSchema.js"
+          ]
+        },
+        {
+          "id": "A8",
+          "titulo": "La puerta: authenticate, authorize y cookies",
+          "archivos": [
+            "middlewares/auth.js",
+            "config/cookies.js"
+          ]
+        },
+        {
+          "id": "A9",
+          "titulo": "Controllers y rutas de cuentas",
+          "archivos": [
+            "controllers/AuthController.js",
+            "controllers/UsersController.js",
+            "routes/authRoutes.js",
+            "routes/usersRoutes.js"
+          ]
+        },
+        {
+          "id": "A10",
+          "titulo": "Jugadores de prueba, tests y README",
+          "archivos": [
+            "usecases/seed/seedPlayers.js",
+            "tests/unit/security.test.js",
+            "tests/unit/daos.test.js",
+            "tests/api/auth.test.js",
+            "tests/api/users.test.js",
+            "tests/api/usersCrud.test.js",
+            "tests/api/startup.test.js",
+            "README.md"
+          ]
+        }
+      ]
+    },
+    "B": {
+      "nombre": "Juego",
+      "lecciones": [
+        {
+          "id": "B1",
+          "titulo": "Las reglas puras del juego",
+          "archivos": [
+            "usecases/game/gameRules.js"
+          ]
+        },
+        {
+          "id": "B2",
+          "titulo": "Armar preguntas y ranking",
+          "archivos": [
+            "usecases/game/buildQuestions.js",
+            "usecases/game/buildRanking.js"
+          ]
+        },
+        {
+          "id": "B3",
+          "titulo": "De dónde salen las aves",
+          "archivos": [
+            "birds/argentineNames.js",
+            "birds/fakeBirdsProvider.js",
+            "birds/inaturalistBirdsProvider.js",
+            "birds/birdsProviderFactory.js"
+          ]
+        },
+        {
+          "id": "B4",
+          "titulo": "Partidas y respuestas en memoria",
+          "archivos": [
+            "dao/gameSessions/GameSessionsMemoryDao.js",
+            "dao/gameResults/GameResultsMemoryDao.js"
+          ]
+        },
+        {
+          "id": "B5",
+          "titulo": "Las tablas del juego",
+          "archivos": [
+            "dao/models/GameSessionModel.js",
+            "dao/models/GameResultModel.js",
+            "dao/gameSessions/GameSessionsSequelizeDao.js",
+            "dao/gameResults/GameResultsSequelizeDao.js"
+          ]
+        },
+        {
+          "id": "B6",
+          "titulo": "Empezar y cerrar una partida",
+          "archivos": [
+            "usecases/game/fetchQuestions.js",
+            "usecases/game/startGame.js",
+            "usecases/game/getQuestions.js",
+            "usecases/game/closeSession.js",
+            "usecases/game/finishGame.js"
+          ]
+        },
+        {
+          "id": "B7",
+          "titulo": "Responder, retomar y ranking",
+          "archivos": [
+            "usecases/game/answerQuestion.js",
+            "usecases/game/getActiveSession.js",
+            "usecases/game/getSessionStats.js",
+            "usecases/game/getRanking.js",
+            "usecases/game/makeGameUseCases.js"
+          ]
+        },
+        {
+          "id": "B8",
+          "titulo": "El juego por HTTP",
+          "archivos": [
+            "schemas/gameSchema.js",
+            "controllers/GameController.js",
+            "routes/gameRoutes.js"
+          ]
+        },
+        {
+          "id": "B9",
+          "titulo": "Tests y guía del juego",
+          "archivos": [
+            "tests/unit/gameRules.test.js",
+            "tests/unit/buildQuestions.test.js",
+            "tests/unit/buildRanking.test.js",
+            "tests/unit/argentineNames.test.js",
+            "tests/api/game.test.js",
+            "requests.http",
+            "GUIA.md"
+          ]
+        }
+      ]
+    },
+    "C": {
+      "nombre": "Plataforma",
+      "lecciones": [
+        {
+          "id": "C1",
+          "titulo": "Middlewares de la tubería",
+          "archivos": [
+            "middlewares/notFound.js",
+            "middlewares/logger.js",
+            "middlewares/errorHandler.js",
+            "middlewares/parseTextJson.js",
+            "middlewares/validate.js"
+          ]
+        },
+        {
+          "id": "C2",
+          "titulo": "Arrancar la aplicación",
+          "archivos": [
+            "app.js",
+            "index.js"
+          ]
+        },
+        {
+          "id": "C3",
+          "titulo": "Eventos, alertas y notificadores",
+          "archivos": [
+            "events/eventBus.js",
+            "alerts/registerAlertListeners.js",
+            "notifications/consoleNotifier.js",
+            "notifications/fileNotifier.js",
+            "notifications/silentNotifier.js",
+            "notifications/notifierFactory.js"
+          ]
+        },
+        {
+          "id": "C4",
+          "titulo": "Conexión y elección de persistencia",
+          "archivos": [
+            "connection/sequelize.js",
+            "connection/index.js",
+            "dao/models/index.js",
+            "dao/daoFactory.js"
+          ]
+        },
+        {
+          "id": "C5",
+          "titulo": "Estado y actividad",
+          "archivos": [
+            "controllers/HealthController.js",
+            "routes/healthRoutes.js",
+            "schemas/activitySchema.js",
+            "usecases/activity/logConnection.js",
+            "usecases/activity/makeActivityUseCases.js",
+            "controllers/ActivityController.js",
+            "routes/activityRoutes.js"
+          ]
+        },
+        {
+          "id": "C6",
+          "titulo": "Métricas",
+          "archivos": [
+            "usecases/metrics/getUserMetrics.js",
+            "usecases/metrics/getGlobalMetrics.js",
+            "usecases/metrics/makeMetricsUseCases.js",
+            "controllers/MetricsController.js",
+            "routes/metricsRoutes.js"
+          ]
+        },
+        {
+          "id": "C7",
+          "titulo": "Reglas de Partidas",
+          "archivos": [
+            "usecases/partidas/assertCanAccess.js",
+            "usecases/partidas/listPartidas.js",
+            "usecases/partidas/getPartida.js",
+            "usecases/partidas/finishPartida.js",
+            "usecases/partidas/deletePartida.js",
+            "usecases/partidas/makePartidaUseCases.js"
+          ]
+        },
+        {
+          "id": "C8",
+          "titulo": "Partidas por HTTP",
+          "archivos": [
+            "schemas/partidaSchema.js",
+            "controllers/PartidasController.js",
+            "routes/partidasRoutes.js"
+          ]
+        },
+        {
+          "id": "C9",
+          "titulo": "El container: donde todo se une",
+          "archivos": [
+            "container/container.js"
+          ]
+        },
+        {
+          "id": "C10",
+          "titulo": "Swagger y tests de plataforma",
+          "archivos": [
+            "docs/swagger.js",
+            "docs/openapi.yaml",
+            "tests/helpers.js",
+            "tests/api/app.test.js",
+            "tests/api/docs.test.js",
+            "tests/api/events.test.js",
+            "tests/api/metrics.test.js",
+            "tests/api/partidas.test.js"
+          ]
+        }
+      ]
+    }
+  }
+}
