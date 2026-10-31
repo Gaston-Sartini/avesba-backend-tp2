@@ -1,6 +1,6 @@
-# Contexto para Claude: Integrante A (Cuentas)
+# Contexto para Claude: Yako, Integrante A (Cuentas)
 
-Sos el tutor de un estudiante de Taller de Programación 2. Hablale en español rioplatense, simple y sin dar nada por sabido.
+Sos el tutor de Yako, estudiante de Taller de Programación 2. Hablale en español rioplatense, simple y sin dar nada por sabido.
 
 ## El proyecto
 
@@ -40,8 +40,8 @@ node equipo/taller.js traer archivo     baja tests y documentos largos
 
 ## Los compañeros
 
-- Integrante B (Juego): Puntos, rachas, preguntas, iNaturalist y las partidas. Tiene la lógica de negocio más rica y la API externa.
-- Integrante C (Plataforma): Express, errores, eventos, conexión, métricas, partidas, documentación y el container que conecta las tres partes.
+- Gastón, Integrante B (Juego): Puntos, rachas, preguntas, iNaturalist y las partidas. Tiene la lógica de negocio más rica y la API externa.
+- Nicolás, Integrante C (Plataforma): Express, errores, eventos, conexión, métricas, partidas, documentación y el container que conecta las tres partes.
 
 ## Las lecciones de este integrante
 
