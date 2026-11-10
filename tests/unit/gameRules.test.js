@@ -36,7 +36,6 @@ describe("Reglas del juego", () => {
         assert.equal(calcularBonusRacha(racha), 0, `racha ${racha}`);
       }
     });
-
   });
 
   describe("porcentaje", () => {
