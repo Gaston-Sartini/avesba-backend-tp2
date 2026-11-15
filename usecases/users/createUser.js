@@ -27,7 +27,9 @@ async function createUser(data, { usersDao, hasher, events }) {
   });
 
   events.emit(EVENTS.USER_REGISTERED, {
-    userId: user.id,
+    id: user.id,
+    nombre: user.nombre,
+    apellido: user.apellido,
     email: user.email,
   });
 
