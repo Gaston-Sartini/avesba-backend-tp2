@@ -28,8 +28,8 @@ async function changePassword(
   );
   if (!isMatch) {
     throw new AppError(
-      "INVALID_CREDENTIALS",
-      "Contraseña actual incorrecta",
+      "WRONG_PASSWORD",
+      "La contraseña actual es incorrecta",
       400,
     );
   }
@@ -42,7 +42,7 @@ async function changePassword(
     updatedAt: Date.now(),
   });
 
-  return { message: "Contraseña cambiada con éxito" };
+  return { message: "Contraseña actualizada exitosamente" };
 }
 
 export default changePassword;

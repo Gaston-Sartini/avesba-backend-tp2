@@ -7,7 +7,7 @@ async function createUser(data, { usersDao, hasher, events }) {
   if (existingUser) {
     throw new AppError(
       "EMAIL_DUPLICATED",
-      `El email ${data.email} ya está en uso`,
+      `El email ${data.email} ya está registrado`,
       409,
     );
   }
