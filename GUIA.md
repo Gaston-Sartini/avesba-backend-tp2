@@ -41,7 +41,7 @@ Es la API del juego **AvesBA**: el jugador ve la foto de un ave y tiene que adiv
 | **Usuarios** (CRUD) | Mi perfil, cambiar mi contraseña. Los admins y moderadores listan usuarios; los admins los crean, editan, eliminan y resetean contraseñas. |
 | **Partidas** (CRUD) | Listar (con filtros, orden y paginación), ver una partida con sus respuestas, crear, terminar y eliminar (solo admin). |
 | **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (los puntos crecen con la racha), retomar si recargás, terminar y ranking. |
-| **Métricas** | Las mías (intentos, aciertos, puntos, posición) y las globales (solo admins y moderadores). |
+| **Métricas** | Las mías (intentos, aciertos, puntos, posición, tiempo conectado hoy y en total) y las globales (solo admins y moderadores). |
 | **Tiempo conectado** | El front manda cuánto tiempo estuvo conectado el jugador al cerrar sesión o la pestaña. Se guarda y aparece en "Mis métricas" (hoy y en total). |
 
 Hay **tres roles**:
@@ -378,7 +378,8 @@ Cada carpeta tiene un archivo por acción y un `make...UseCases.js`, la **factor
 
 | Archivo | Qué hace |
 |---|---|
-| `getUserMetrics.js` | Intentos, aciertos, % y puntos de todas mis partidas, y mi posición (sale del mismo `buildRanking`). |
+| `getUserMetrics.js` | Intentos, aciertos, % y puntos de todas mis partidas, mi posición (sale del mismo `buildRanking`; `null` si no sumé puntos) y mi tiempo conectado hoy y en total. |
+| `connectionTime.js` | Funciones puras: cuánto de cada tramo cae en el día de hoy (hora de Argentina) y el total. |
 | `getGlobalMetrics.js` | Cuántos jugaron, cuántas respuestas hay, el % global, y el ave más acertada y la menos acertada. Si nadie jugó todavía, devuelve `null` en las aves. |
 
 **`usecases/activity/`** y **`usecases/seed/`**
@@ -408,7 +409,8 @@ Los DAO de Sequelize tienen además `init()`, que prepara la base y crea las tab
 | `UserModel.js` | `users` | nombre, apellido, email (único), passwordHash, role, is_active, createdAt, updatedAt, lastLogin |
 | `GameSessionModel.js` | `game_sessions` | user_id, estado (`activa`/`terminada`), preguntas (JSON), racha actual y máxima, puntos, intentos, aciertos |
 | `GameResultModel.js` | `game_results` | user_id, session_id, ave_id, ave_nombre, respuesta, es_correcta, puntos_obtenidos, bonus_racha |
-| `index.js` | — | **Las relaciones**: un usuario tiene muchas partidas, una partida tiene muchas respuestas, y un usuario tiene muchas respuestas. |
+| `ConnectionLogModel.js` | `user_connection_logs` | user_id, registro_id, inicio_ms, fin_ms, tiempo_conectado_ms, createdAt |
+| `index.js` | — | **Las relaciones**: un usuario tiene muchas partidas, una partida tiene muchas respuestas, un usuario tiene muchas respuestas y muchos tramos de tiempo conectado. |
 
 Los nombres de los campos son **los mismos que en la base de Python**, porque el frontend los lee tal cual (`puntos_totales`, `es_correcta`, `role`…).
 
@@ -475,7 +477,7 @@ npm run dev
  └─ index.js → createApp() (app.js)
       ├─ cors, logger, express.json, cookieParser
       ├─ buildContainer() (container.js)
-      │    ├─ daoFactory → 3 DAOs → init() → initDatabase(): WAL + crear tablas
+      │    ├─ daoFactory → 4 DAOs → init() → initDatabase(): WAL + crear tablas
       │    ├─ birdsProviderFactory → iNaturalist
       │    ├─ eventBus + registerAlertListeners(notificador)
       │    ├─ hasher, tokens, loginAttempts, auth (authenticate / authorize)
@@ -633,7 +635,7 @@ El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya 
 npm test
 ```
 
-Corre **290 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
+Corre **306 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
 
 | Archivo | Qué prueba |
 |---|---|
@@ -649,8 +651,9 @@ Corre **290 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `data
 | `tests/api/partidas.test.js` | El CRUD de partidas: filtros, orden, paginación, dueño, terminar dos veces, borrar |
 | `tests/api/docs.test.js` | Swagger en `/api-docs`: que documente **todas** las rutas del código y que los `$ref` existan |
 | `tests/api/game.test.js` | Toda la partida, el lote, las trampas, la racha, retomar, ranking, iNaturalist caído |
-| `tests/api/metrics.test.js` | Métricas propias y globales, permisos, sistema sin partidas |
-| `tests/api/events.test.js` | Que cada evento llegue al notificador; el aviso de desconexión |
+| `tests/api/metrics.test.js` | Métricas propias (incluido el tiempo conectado) y globales, permisos, sistema sin partidas |
+| `tests/unit/connectionTime.test.js` | El tiempo conectado de hoy (día de Argentina) y el total |
+| `tests/api/events.test.js` | Que cada evento llegue al notificador; guardar el tiempo conectado sin duplicar reintentos |
 | `tests/api/app.test.js` | Estado, 404, JSON roto, CORS, flujos completos (incluido uno solo con cookies, como el front) |
 | `tests/api/startup.test.js` | Sin `JWT_SECRET` no arranca; carga de datos de prueba sin duplicar |
 
@@ -675,13 +678,14 @@ Las rutas, los campos de las respuestas y el uso de cookies son **los mismos**, 
 | Datos inválidos | 422 | 400 `VALIDATION_ERROR` | Como en la clase 6. |
 | Email ya registrado | 400 | 409 `EMAIL_DUPLICATED` | 409 = "choca con algo que ya existe" (así lo usa el profe). |
 | IDs | ULID (texto) | Números autoincrementales | Como en todas las clases. |
-| Puntos con bonus | El ranking y "terminar" **no** sumaban el bonus, pero "retomar" sí | El bonus se suma **siempre** | Antes el mismo jugador tenía puntajes distintos según la pantalla. |
+| Base de datos | PostgreSQL | SQLite con Sequelize, o memoria (`PERSISTENCE_TYPE`) | En el curso usamos SQLite, y la consigna pide poder cambiar la persistencia. |
 | Estadísticas de la partida activa | Daban 0 hasta terminar | Se calculan en el momento | Era un bug. |
 | Métricas globales sin partidas | Fallaba (variable sin definir) | Devuelve `null` en las aves | Era un bug. |
 | Tabla `scores` | Guardaba el puntaje de cada partida | No existe: el puntaje queda en la partida terminada | Era el mismo dato repetido. |
-| Aviso de desconexión | No existía (el front recibía 404) | `POST /api/user-connection-log` | El front ya lo mandaba. |
+| Tiempo conectado: error en el tramo | 422 | 400 `INVALID_INTERVAL` | Como en la clase 6. |
+| Desempate en el ranking | Por id (ULID, que sigue el orden de creación) | Por aciertos y después por antigüedad | Premia al que acertó más con los mismos puntos. |
 | Documentación `/docs`, `/scalar` | Automática (FastAPI) | `requests.http` + esta guía | Express no la genera; en el curso usamos REST Client. |
-| Admin inicial | Email personal | `admin@avesba.com` (se cambia en `.env`) | No poner datos personales en el código. |
+| Admin inicial | Email personal, y admins de prueba con los mails del equipo | `admin@avesba.com` (se cambia en `.env`) | No poner datos personales en el código. |
 
 ---
 

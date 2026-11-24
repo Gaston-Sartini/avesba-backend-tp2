@@ -13,7 +13,7 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 | 📖 **Documentación de la API (Swagger)** | `http://localhost:8000/api-docs`, con el servidor levantado |
 | 🧭 **Guía del código**, archivo por archivo | [GUIA.md](GUIA.md) |
 | 🧪 **Pruebas a mano** | [requests.http](requests.http) (extensión REST Client de VS Code) |
-| ✅ **Tests automáticos** | `npm test`: 290 tests |
+| ✅ **Tests automáticos** | `npm test`: 306 tests |
 
 ---
 
@@ -68,6 +68,7 @@ Este backend es el que usa el frontend de AvesBA (Vue), que se desarrolló en ot
 | **Usuario** (`users`) | Una persona registrada | `id`, `nombre`, `apellido`, `email` (único), `passwordHash`, `role` (`jugador` / `moderador` / `admin`), `is_active`, `createdAt`, `lastLogin` |
 | **Partida** (`game_sessions`) | Un juego de 10 preguntas | `id`, `user_id`, `estado` (`activa` / `terminada`), `preguntas` (el lote, en JSON), `streak_actual`, `streak_maximo`, `puntos_totales`, `total_intentos`, `total_aciertos`, `createdAt`, `terminadaAt` |
 | **Respuesta** (`game_results`) | Lo que respondió el jugador a una pregunta | `id`, `user_id`, `session_id`, `ave_id`, `ave_nombre`, `respuesta_usuario`, `es_correcta`, `puntos_obtenidos`, `bonus_racha` |
+| **Tiempo conectado** (`user_connection_logs`) | Un tramo de tiempo que el jugador estuvo conectado | `id`, `user_id`, `registro_id`, `inicio_ms`, `fin_ms`, `tiempo_conectado_ms`, `createdAt` |
 
 **Usuario** y **Partida** tienen **CRUD completo** (listar, ver, crear, actualizar y eliminar).
 
@@ -79,7 +80,11 @@ Este backend es el que usa el frontend de AvesBA (Vue), que se desarrolló en ot
 │   (users)    │   juega    │(game_sessions│   tiene    │(game_results)│
 └──────────────┘            └──────────────┘            └──────────────┘
        │ 1                                                     ▲ N
-       └───────────────────── responde ────────────────────────┘
+       ├───────────────────── responde ────────────────────────┘
+       │ 1        N ┌────────────────────────┐
+       └───────────▶│    Tiempo conectado    │
+         se conecta │ (user_connection_logs) │
+                    └────────────────────────┘
 ```
 
 ```mermaid
@@ -87,6 +92,7 @@ erDiagram
     USUARIO ||--o{ PARTIDA : juega
     PARTIDA ||--o{ RESPUESTA : tiene
     USUARIO ||--o{ RESPUESTA : responde
+    USUARIO ||--o{ TIEMPO_CONECTADO : "se conecta"
     USUARIO {
         int id PK
         string nombre
@@ -111,10 +117,19 @@ erDiagram
         int puntos_obtenidos
         int bonus_racha
     }
+    TIEMPO_CONECTADO {
+        int id PK
+        int user_id FK
+        string registro_id
+        bigint inicio_ms
+        bigint fin_ms
+        int tiempo_conectado_ms
+    }
 ```
 
 - Un **usuario** juega **muchas partidas** (1 a N).
 - Una **partida** tiene **muchas respuestas** (1 a N). `GET /partidas/:id` devuelve la partida con sus respuestas.
+- Un **usuario** tiene **muchos tramos de tiempo conectado** (1 a N). De ahí salen el tiempo de hoy y el total de "Mis métricas".
 - Las relaciones de Sequelize están centralizadas en `dao/models/index.js`.
 
 ---
@@ -470,7 +485,7 @@ Los errores esperados se lanzan con **`AppError`** (`errors/AppError.js`), que t
 npm test
 ```
 
-- **290 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
+- **306 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
 - **No necesitan internet ni tocan tu base:** usan SQLite en memoria y un proveedor de aves falso.
 - **Tests unitarios** (`tests/unit/`): reglas del juego, armado de preguntas, ranking, seguridad, y el **contrato de los DAOs** (los de memoria y los de SQLite tienen que comportarse igual).
 - **Tests de la API** (`tests/api/`): cada endpoint con sus casos de éxito y de error, **corridos en los dos modos de persistencia**. También verifican eventos, CORS, el arranque y que Swagger documente todas las rutas.
@@ -516,5 +531,5 @@ npm test
 | README | Este archivo |
 | **Opcional:** filtros, orden y paginación | `GET /partidas?estado=&sort=&page=`, `GET /users?role=&page=` |
 | **Opcional:** segundo evento con notificador adicional | 4 eventos; notificadores de consola y archivo |
-| **Opcional:** tests de los casos de uso | `tests/` (290 tests, con el DAO en memoria como doble) |
+| **Opcional:** tests de los casos de uso | `tests/` (306 tests, con el DAO en memoria como doble) |
 | **Opcional:** seguridad (hash y JWT) | `security/`, `middlewares/auth.js` |
