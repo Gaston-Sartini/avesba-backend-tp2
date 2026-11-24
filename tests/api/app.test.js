@@ -52,9 +52,16 @@ describe("Aplicación", () => {
       assert.equal(response.headers.get("access-control-allow-credentials"), "true");
     });
 
+    it("acepta el front en cualquier puerto de localhost", async () => {
+      const response = await api.get("/", { headers: { Origin: "http://127.0.0.1:4173" } });
+      assert.equal(response.headers.get("access-control-allow-origin"), "http://127.0.0.1:4173");
+    });
+
     it("no habilita a orígenes desconocidos", async () => {
       const response = await api.get("/", { headers: { Origin: "http://sitio-malo.com" } });
       assert.equal(response.headers.get("access-control-allow-origin"), null);
+      const parecido = await api.get("/", { headers: { Origin: "http://localhost.sitio-malo.com" } });
+      assert.equal(parecido.headers.get("access-control-allow-origin"), null);
     });
   });
 

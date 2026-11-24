@@ -243,9 +243,9 @@ Se leen **solamente** en `config/config.js`. El `.env` **no se sube a Git**; `.e
 | Variable | Valor por defecto | Para qué sirve |
 |---|---|---|
 | `PORT` | `8000` | Puerto del servidor |
-| `NODE_ENV` | `development` | `production` activa las cookies `secure` (solo HTTPS) |
+| `NODE_ENV` | `development` | `production` activa las cookies `secure` y `SameSite=None` (solo HTTPS, para un front en otro dominio) |
 | `APP_NAME` / `APP_VERSION` | `AvesBA API` / `1.0.0` | Lo que responde `GET /` |
-| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué páginas web se puede llamar a la API (separadas por coma) |
+| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué páginas web se puede llamar a la API (separadas por coma). localhost en cualquier puerto se acepta siempre. |
 | **`PERSISTENCE_TYPE`** | `memory` | **`memory`** (array de JS, se borra al reiniciar) o **`sequelize`** (SQLite) |
 | `DB_STORAGE` | `./database.sqlite` | Archivo de la base (`:memory:` = base en memoria) |
 | `NOTIFIER_TYPE` | `console` | Dónde van los avisos de los eventos: `console`, `file` (`notifications.log`) o `none` |

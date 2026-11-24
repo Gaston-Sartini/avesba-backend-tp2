@@ -110,7 +110,7 @@ Servidor AvesBA corriendo en http://localhost:8000
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 15 | Cuánto dura el token de acceso. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | Cuánto dura el token para renovar. |
 | `SEED_PLAYERS` | 100 | Cuántos jugadores de prueba cargar (0 = ninguno). |
-| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué página web se puede llamar a la API (la del front de Vite). |
+| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué página web se puede llamar a la API. localhost en cualquier puerto se acepta siempre; acá va, por ejemplo, la dirección del front publicado. |
 
 ---
 
