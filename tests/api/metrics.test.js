@@ -36,6 +36,17 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.porcentaje_acierto, 0);
         assert.equal(response.body.puntuacion_total, 0);
         assert.equal(response.body.posicion_ranking, null); // sin puntos no tiene puesto
+        assert.equal(response.body.tiempo_conectado_hoy_seg, 0);
+        assert.equal(response.body.tiempo_conectado_total_seg, 0);
+      });
+
+      it("suma el tiempo conectado de hoy y el total", async () => {
+        const { token } = await registerPlayer(api);
+        const fin = Date.now();
+        await api.post("/api/user-connection-log", { registroId: "a", inicioMs: fin - 90_000, finMs: fin, tiempoConectado: 90_000 }, { token });
+        const response = await api.get(`${METRICAS}/usuario`, { token });
+        assert.equal(response.body.tiempo_conectado_total_seg, 90);
+        assert.ok(response.body.tiempo_conectado_hoy_seg <= 90);
       });
 
       it("suma todas sus partidas y calcula su posición en el ranking", async () => {

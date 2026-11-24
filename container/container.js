@@ -15,7 +15,7 @@ import {
 } from "../config/config.js";
 
 // Persistencia, aves y notificaciones (cada una con su factory)
-import { getUsersDao, getGameSessionsDao, getGameResultsDao } from "../dao/daoFactory.js";
+import { getUsersDao, getGameSessionsDao, getGameResultsDao, getConnectionLogsDao } from "../dao/daoFactory.js";
 import { getBirdsProvider } from "../birds/birdsProviderFactory.js";
 import { getNotifier } from "../notifications/notifierFactory.js";
 
@@ -70,7 +70,8 @@ async function buildContainer(overrides = {}) {
   const usersDao = overrides.usersDao ?? getUsersDao();
   const gameSessionsDao = overrides.gameSessionsDao ?? getGameSessionsDao();
   const gameResultsDao = overrides.gameResultsDao ?? getGameResultsDao();
-  for (const dao of [usersDao, gameSessionsDao, gameResultsDao]) {
+  const connectionLogsDao = overrides.connectionLogsDao ?? getConnectionLogsDao();
+  for (const dao of [usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao]) {
     if (typeof dao.init === "function") await dao.init();
   }
 
@@ -107,7 +108,7 @@ async function buildContainer(overrides = {}) {
   router.use("/auth", createAuthRouter(authController));
 
   const usersController = new UsersController(
-    makeUserUseCases({ usersDao, gameSessionsDao, gameResultsDao, hasher, events })
+    makeUserUseCases({ usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao, hasher, events })
   );
   router.use("/users", createUsersRouter(usersController, auth));
 
@@ -121,11 +122,11 @@ async function buildContainer(overrides = {}) {
   );
   router.use("/partidas", createPartidasRouter(partidasController, auth));
 
-  const metricsController = new MetricsController(makeMetricsUseCases({ usersDao, gameResultsDao }));
+  const metricsController = new MetricsController(makeMetricsUseCases({ usersDao, gameResultsDao, connectionLogsDao }));
   router.use("/api/inaturalist/metricas", createMetricsRouter(metricsController, auth));
 
-  const activityController = new ActivityController(makeActivityUseCases({ events }));
-  router.use("/api", createActivityRouter(activityController));
+  const activityController = new ActivityController(makeActivityUseCases({ connectionLogsDao, events }));
+  router.use("/api", createActivityRouter(activityController, auth));
 
   // Retornamos el router principal listo para ser usado por Express
   return router;

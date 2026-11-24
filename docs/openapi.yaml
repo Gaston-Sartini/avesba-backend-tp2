@@ -602,23 +602,32 @@ paths:
   /api/user-connection-log:
     post:
       tags: [Actividad]
-      summary: Aviso de desconexión
+      summary: Guardar tiempo conectado
       description: |
-        El front lo manda con `navigator.sendBeacon` al cerrar la pestaña. Acepta el JSON como `text/plain` (así lo envía el navegador) o como `application/json`.
+        El front lo manda al cerrar sesión o la pestaña (con `navigator.sendBeacon`, que envía el JSON como `text/plain`). También acepta `application/json`.
+        Se guarda a nombre del usuario logueado; un `userId` en el body se ignora.
+        Si viene `registroId` (junto con `inicioMs` y `finMs`), un reintento del mismo tramo no se guarda dos veces.
         Emite el evento `user.disconnected`.
       operationId: logConnection
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/ConnectionLogRequest" }
-            example: { userId: 11, tiempoConectado: 90000 }
+            example: { registroId: "7f3c2a1e-tramo", inicioMs: 1763200000000, finMs: 1763200090000, tiempoConectado: 90000 }
           text/plain:
             schema: { type: string }
-            example: '{"userId": 11, "tiempoConectado": 90000}'
+            example: '{"tiempoConectado": 90000}'
       responses:
-        "204": { description: Recibido (sin cuerpo) }
+        "201":
+          description: Tramo guardado (o ya estaba guardado)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectionLogResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
 components:
   securitySchemes:
@@ -1042,6 +1051,8 @@ components:
         porcentaje_acierto: { type: number }
         puntuacion_total: { type: integer }
         posicion_ranking: { type: integer, nullable: true, description: "null si todavía no sumó puntos" }
+        tiempo_conectado_hoy_seg: { type: integer, description: Segundos conectado hoy (día de Argentina) }
+        tiempo_conectado_total_seg: { type: integer, description: Segundos conectado en total }
     AveEstadistica:
       type: object
       properties:
@@ -1066,7 +1077,14 @@ components:
     # --- Actividad ---
     ConnectionLogRequest:
       type: object
-      required: [userId, tiempoConectado]
+      required: [tiempoConectado]
       properties:
-        userId: { type: integer, nullable: true, description: null si no estaba logueado }
-        tiempoConectado: { type: integer, minimum: 0, description: Milisegundos que estuvo conectado }
+        tiempoConectado: { type: integer, minimum: 0, maximum: 86400000, description: Milisegundos que estuvo conectado (máximo 24 h) }
+        inicioMs: { type: integer, description: Inicio del tramo (epoch en ms). Va junto con finMs y registroId. }
+        finMs: { type: integer, description: Fin del tramo (epoch en ms). finMs - inicioMs tiene que ser tiempoConectado. }
+        registroId: { type: string, maxLength: 128, description: Identificador del tramo que genera el front, para no duplicar reintentos }
+    ConnectionLogResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        tiempo_conectado_ms: { type: integer, example: 90000 }

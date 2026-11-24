@@ -249,11 +249,13 @@ Authorization: Bearer {{adminToken}}
 # 6. ACTIVIDAD
 ###############################################################################
 
-### 6.1 Aviso de desconexión (204) — el front lo manda con sendBeacon al cerrar la pestaña
+### 6.1 Guardar tiempo conectado (201) — el front lo manda al cerrar sesión o la pestaña
+# Necesita login (el tramo se guarda a nombre del usuario del token). Mandalo dos veces: no se duplica.
 POST {{baseUrl}}/api/user-connection-log
 Content-Type: text/plain
+Authorization: Bearer {{token}}
 
-{"userId": 11, "tiempoConectado": 90000}
+{"registroId": "tramo-prueba-1", "inicioMs": 1763200000000, "finMs": 1763200090000, "tiempoConectado": 90000}
 
 
 ###############################################################################

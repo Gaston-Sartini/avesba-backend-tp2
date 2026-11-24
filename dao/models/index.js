@@ -2,6 +2,7 @@ import { sequelize } from "../../connection/index.js";
 import UserModel from "./UserModel.js";
 import GameSessionModel from "./GameSessionModel.js";
 import GameResultModel from "./GameResultModel.js";
+import ConnectionLogModel from "./ConnectionLogModel.js";
 
 // -----------------------------------------------------------------------------
 // DEFINICIÓN DE RELACIONES (ASOCIACIONES)
@@ -21,5 +22,9 @@ GameResultModel.belongsTo(GameSessionModel, { foreignKey: "session_id", as: "ses
 UserModel.hasMany(GameResultModel, { foreignKey: "user_id", as: "respuestas" });
 GameResultModel.belongsTo(UserModel, { foreignKey: "user_id", as: "usuario" });
 
+// Relación 1 a N: un usuario tiene muchos tramos de tiempo conectado
+UserModel.hasMany(ConnectionLogModel, { foreignKey: "user_id", as: "conexiones" });
+ConnectionLogModel.belongsTo(UserModel, { foreignKey: "user_id", as: "usuario" });
+
 // Exportamos la instancia de sequelize (para poder hacer sync) y todos los modelos
-export { sequelize, UserModel, GameSessionModel, GameResultModel };
+export { sequelize, UserModel, GameSessionModel, GameResultModel, ConnectionLogModel };

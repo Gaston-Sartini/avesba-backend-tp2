@@ -42,7 +42,7 @@ Es la API del juego **AvesBA**: el jugador ve la foto de un ave y tiene que adiv
 | **Partidas** (CRUD) | Listar (con filtros, orden y paginación), ver una partida con sus respuestas, crear, terminar y eliminar (solo admin). |
 | **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (los puntos crecen con la racha), retomar si recargás, terminar y ranking. |
 | **Métricas** | Las mías (intentos, aciertos, puntos, posición) y las globales (solo admins y moderadores). |
-| **Actividad** | El front avisa cuánto tiempo estuvo conectado el jugador cuando cierra la pestaña. |
+| **Tiempo conectado** | El front manda cuánto tiempo estuvo conectado el jugador al cerrar sesión o la pestaña. Se guarda y aparece en "Mis métricas" (hoy y en total). |
 
 Hay **tres roles**:
 - `jugador`: el que se registra.
@@ -222,7 +222,7 @@ BackendNode/
 │   ├── game/             iniciar, preguntas, responder, retomar, terminar, ranking
 │   ├── partidas/         el CRUD de partidas
 │   ├── metrics/          métricas del jugador y globales
-│   ├── activity/         aviso de desconexión
+│   ├── activity/         guardar el tiempo conectado
 │   └── seed/             los 100 jugadores de prueba
 │
 ├── dao/                  El acceso a los datos
@@ -281,7 +281,7 @@ Todas son *factories*: reciben el controller (y los middlewares de auth) y devue
 | `gameRoutes.js` | `/api/inaturalist/juego` | Las 7 rutas del juego, todas con login. |
 | `partidasRoutes.js` | `/partidas` | El CRUD de partidas, todo con login. Borrar es solo para admins. |
 | `metricsRoutes.js` | `/api/inaturalist/metricas` | `usuario` (con login) y `global` (solo admin y moderador). |
-| `activityRoutes.js` | `/api` | `POST /user-connection-log`. Usa `express.text()` + `parseTextJson`, porque el front la manda como texto plano. |
+| `activityRoutes.js` | `/api` | `POST /user-connection-log`, con login. Usa `express.text()` + `parseTextJson`, porque el front la manda como texto plano. |
 
 ### `middlewares/`
 
@@ -302,7 +302,7 @@ Todas son *factories*: reciben el controller (y los middlewares de auth) y devue
 | `partidaSchema.js` | Query del listado (`user_id`, `estado`, `sort`, `page`, `per_page`), body para crear (`place_id`, `locale`) y para terminar (`estado: "terminada"`). |
 | `userSchema.js` | Crear usuario (como el registro, pero con `role`), cambio de contraseña, edición de usuario (`role` solo puede ser `jugador`, `moderador` o `admin`), query del listado (`page`, `per_page`, `role`) e id de la URL. |
 | `gameSchema.js` | Query de las aves (`place_id`, `locale`, con valores por defecto), body de la respuesta (`ave_id`, `respuesta_usuario`) y `limit` (1 a 100) y `offset` del ranking. |
-| `activitySchema.js` | `userId` (o `null`) y `tiempoConectado` en milisegundos. |
+| `activitySchema.js` | `tiempoConectado` en milisegundos (de 0 a 24 h) y, opcionales, `inicioMs`, `finMs` y `registroId` del tramo. |
 
 ### `controllers/`
 
@@ -385,7 +385,7 @@ Cada carpeta tiene un archivo por acción y un `make...UseCases.js`, la **factor
 
 | Archivo | Qué hace |
 |---|---|
-| `logConnection.js` | Solo emite el evento `user.disconnected`. |
+| `logConnection.js` | Guarda el tramo a nombre del usuario logueado. Revisa que el tramo sea coherente y que un reintento con el mismo `registroId` no se guarde dos veces (si es otro tramo, 409). Emite `user.disconnected`. |
 | `seedPlayers.js` | Crea N jugadores de prueba (los 3 primeros son moderadores), cada uno con 1 a 5 partidas simuladas con **las mismas reglas** del juego real. Si ya existen, no hace nada. |
 
 ### `dao/`: los datos
@@ -592,7 +592,7 @@ El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya 
 | GET | `/api/inaturalist/juego/ranking?limit=&offset=` | 🔐 | Ranking paginado, con tu posición |
 | GET | `/api/inaturalist/metricas/usuario` | 🔐 | Mis métricas |
 | GET | `/api/inaturalist/metricas/global` | 👮 | Métricas de todo el sistema |
-| POST | `/api/user-connection-log` | 🔓 | Aviso de desconexión del front |
+| POST | `/api/user-connection-log` | 🔐 | Guardar tiempo conectado |
 
 ### Códigos de error
 
