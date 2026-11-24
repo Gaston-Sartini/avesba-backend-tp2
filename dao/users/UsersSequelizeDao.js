@@ -1,112 +1,82 @@
-import UserModel from "../models/UserModel.js";
-import AppError from "../../errors/AppError.js";    
+import { UserModel } from "../models/index.js";
+import { initDatabase } from "../../connection/index.js";
 
+// Columnas pedidas explícitamente (sin SELECT *): NO incluye passwordHash
+const USER_ATTRIBUTES = ["id", "nombre", "apellido", "email", "role", "is_active", "createdAt", "updatedAt", "lastLogin"];
+
+/**
+ * Adaptador DAO para Usuarios utilizando Sequelize (SQL).
+ * Debe respetar exactamente la misma interfaz (mismos métodos públicos) que UsersMemoryDao.
+ */
 class UsersSequelizeDao {
+  // Prepara la base y crea las tablas que falten (ver connection/sequelize.js)
+  async init() {
+    await initDatabase();
+  }
 
-async getAll({ role, is_active, page = 1, limit } = {}) {
-  try {
+  // Arma el WHERE solo con los filtros que vinieron
+  #where({ role, is_active } = {}) {
     const where = {};
     if (role !== undefined) where.role = role;
     if (is_active !== undefined) where.is_active = is_active;
-
-    const options = {
-  where,
-  attributes: ["id","nombre", "apellido", "email", "role", "is_active", "createdAt", "updatedAt", "lastLogin"],
-  order: [["id", "ASC"]],
-};
-    if (limit) {
-      options.limit = limit;
-      options.offset = (page - 1) * limit;
-    }
-    const users = await UserModel.findAll(options);
-return users.map((u) => u.get({ plain: true }));
-  } catch (error) {
-    throw new AppError("USERS_FETCH_FAILED", "No se pudieron obtener los usuarios", 500, error);
+    return where;
   }
-}
+
+  // filters: { role, is_active, page, limit } — el filtro y la paginación los resuelve la BD
+  async getAll({ role, is_active, page = 1, limit } = {}) {
+    const users = await UserModel.findAll({
+      where: this.#where({ role, is_active }),
+      attributes: USER_ATTRIBUTES,
+      order: [["id", "ASC"]],
+      ...(limit && { limit, offset: (page - 1) * limit }),
+    });
+    return users.map((u) => u.get({ plain: true }));
+  }
 
   async count({ role, is_active } = {}) {
-    try {
-      const where = {};
-      if (role !== undefined) where.role = role;
-      if (is_active !== undefined) where.is_active = is_active;
-      return await UserModel.count({ where });
-    } catch (error) {
-     throw new AppError("USERS_COUNT_FAILED", "No se pudo contar los usuarios", 500, error);
-    }
+    return UserModel.count({ where: this.#where({ role, is_active }) });
   }
 
   async getById(id) {
-  try {
-    const user = await UserModel.findByPk(id, {
-      attributes: ["id","nombre", "apellido", "email", "role", "is_active", "createdAt", "updatedAt", "lastLogin"],
-    });
+    const user = await UserModel.findByPk(id, { attributes: USER_ATTRIBUTES });
     return user ? user.get({ plain: true }) : null;
-  } catch (error) {
-    throw new AppError("USER_FETCH_FAILED", "No se pudo obtener el usuario", 500, error);
   }
-}
 
   async getByEmail(email) {
-  try {
-    const user = await UserModel.findOne({
-      where: { email },
-      attributes: ["id","nombre", "apellido", "email", "role", "is_active", "createdAt", "updatedAt", "lastLogin"],
-    });
+    const user = await UserModel.findOne({ where: { email }, attributes: USER_ATTRIBUTES });
     return user ? user.get({ plain: true }) : null;
-  } catch (error) {
-    throw new AppError("USER_FETCH_FAILED", "No se pudo buscar el usuario por email", 500, error);
   }
-}
 
+  // Credenciales para el login: es el ÚNICO método que devuelve el hash de la contraseña
   async getCredentialsByEmail(email) {
-  try {
     const user = await UserModel.findOne({
       where: { email },
+      attributes: [...USER_ATTRIBUTES, "passwordHash"],
     });
     return user ? user.get({ plain: true }) : null;
-  } catch (error) {
-    throw new AppError("USER_FETCH_FAILED", "No se pudo buscar el usuario por email", 500, error);
   }
-}
 
   async save(data) {
-    try {
-      const { id, ...userData } = data;
-      const newUser = await UserModel.create(userData);
-      const plain = newUser.dataValues;
-      const { passwordHash, ...safeUser } = plain;
-      return safeUser;
-    } catch (error) {
-      throw new AppError("USER_CREATION_FAILED", "No se pudo crear el usuario", 500, error);    
-    }
+    // Ignoramos el id si viene provisto, la BD asigna uno
+    const { id: _ignored, ...userData } = data;
+    const created = await UserModel.create(userData);
+    return this.getById(created.id);
   }
 
   async update(id, changes) {
-  try {
-    const instance = await UserModel.findByPk(id);
-    if (!instance) {
-      return null; 
-    }
-    const { id: ignoredId, ...allowedChanges } = changes; 
-    await instance.update(allowedChanges);
-    const plain = instance.dataValues;
-    const { passwordHash, ...safeUser } = plain;
-    return safeUser;
-  } catch (error) {
-    throw new AppError("USER_UPDATE_FAILED", "No se pudo actualizar el usuario", 500, error);
+    const user = await UserModel.findByPk(id);
+    if (!user) return null;
+
+    const { id: _ignored, ...allowedChanges } = changes;
+    await user.update(allowedChanges);
+    return this.getById(id);
+  }
+
+  // Devuelve true si lo borró, false si no existía
+  async delete(id) {
+    const deletedCount = await UserModel.destroy({ where: { id } });
+    return deletedCount > 0;
   }
 }
 
-async delete(id) {
-  try {
-    const cantidadBorrada = await UserModel.destroy({ where: { id } });
-    return cantidadBorrada > 0; // Devuelve true si se eliminó al menos un usuario
-  } catch (error) {
-    throw new AppError("USER_DELETE_FAILED", "No se pudo eliminar el usuario", 500, error);
-  }
-}
-}   
-
-export { UsersSequelizeDao };
 export default UsersSequelizeDao;
