@@ -301,7 +301,7 @@ Todas son *factories*: reciben el controller (y los middlewares de auth) y devue
 | `authSchema.js` | Registro (`nombre`, `apellido`, `email`, `password` de 8 a 72 caracteres). **No acepta `role`**: si un endpoint público dejara elegir el rol, cualquiera se registraría como admin. También login y refresh. |
 | `partidaSchema.js` | Query del listado (`user_id`, `estado`, `sort`, `page`, `per_page`), body para crear (`place_id`, `locale`) y para terminar (`estado: "terminada"`). |
 | `userSchema.js` | Crear usuario (como el registro, pero con `role`), cambio de contraseña, edición de usuario (`role` solo puede ser `jugador`, `moderador` o `admin`), query del listado (`page`, `per_page`, `role`) e id de la URL. |
-| `gameSchema.js` | Query de las aves (`place_id`, `locale`, con valores por defecto), body de la respuesta (`ave_id`, `respuesta_usuario`) y `limit` del ranking (1 a 100). |
+| `gameSchema.js` | Query de las aves (`place_id`, `locale`, con valores por defecto), body de la respuesta (`ave_id`, `respuesta_usuario`) y `limit` (1 a 100) y `offset` del ranking. |
 | `activitySchema.js` | `userId` (o `null`) y `tiempoConectado` en milisegundos. |
 
 ### `controllers/`
@@ -371,8 +371,8 @@ Cada carpeta tiene un archivo por acción y un `make...UseCases.js`, la **factor
 | `getSessionStats.js` | Puntos, intentos, aciertos y porcentaje de la partida en curso. |
 | `closeSession.js` | Calcula el resumen, marca la partida como `terminada` y emite `game.finished`. Lo usan `finishGame` y `startGame`. |
 | `finishGame.js` | Termina la partida activa (si no hay, 404). |
-| `buildRanking.js` | Función pura: con los usuarios y todas las respuestas arma el ranking ordenado (por puntos; si empatan, por aciertos y antigüedad). |
-| `getRanking.js` | Los primeros `limit` del ranking. |
+| `buildRanking.js` | Función pura: con los usuarios y todas las respuestas arma el ranking de los que tienen puntos, numerado y ordenado (por puntos; si empatan, por aciertos y antigüedad). |
+| `getRanking.js` | Una página del ranking (`limit` y `offset`), el total de jugadores con puesto y la fila del jugador logueado (`jugador_actual`). |
 
 **`usecases/metrics/`**
 
@@ -589,7 +589,7 @@ El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya 
 | GET | `/api/inaturalist/juego/sesion` | 🔐 | Retomar la partida activa |
 | GET | `/api/inaturalist/juego/sesion/estadisticas` | 🔐 | Estadísticas de la partida activa |
 | POST | `/api/inaturalist/juego/terminar` | 🔐 | Terminar la partida |
-| GET | `/api/inaturalist/juego/ranking?limit=` | 🔐 | Ranking |
+| GET | `/api/inaturalist/juego/ranking?limit=&offset=` | 🔐 | Ranking paginado, con tu posición |
 | GET | `/api/inaturalist/metricas/usuario` | 🔐 | Mis métricas |
 | GET | `/api/inaturalist/metricas/global` | 👮 | Métricas de todo el sistema |
 | POST | `/api/user-connection-log` | 🔓 | Aviso de desconexión del front |

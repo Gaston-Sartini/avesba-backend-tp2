@@ -4,7 +4,8 @@ import { resumirRespuestas } from "../game/gameRules.js";
 
 /**
  * Caso de Uso: Mis métricas (las del jugador logueado).
- * Intentos, aciertos y puntos de TODAS sus partidas, y su posición en el ranking general.
+ * Intentos, aciertos y puntos de TODAS sus partidas, y su posición en el ranking general
+ * (`null` si todavía no sumó puntos: el ranking solo incluye a quienes tienen puntos).
  */
 async function getUserMetrics(actor, { usersDao, gameResultsDao }) {
   const user = await usersDao.getById(actor.id);
@@ -18,7 +19,7 @@ async function getUserMetrics(actor, { usersDao, gameResultsDao }) {
 
   // La posición sale del mismo ranking que ve todo el mundo
   const ranking = buildRanking(await usersDao.getAll(), todas);
-  const posicion = ranking.findIndex((jugador) => jugador.user_id === user.id) + 1;
+  const posicion = ranking.find((jugador) => jugador.user_id === user.id)?.posicion ?? null;
 
   return {
     user_id: user.id,
@@ -28,7 +29,7 @@ async function getUserMetrics(actor, { usersDao, gameResultsDao }) {
     total_aciertos,
     porcentaje_acierto,
     puntuacion_total: puntos_totales,
-    posicion_ranking: posicion || 1,
+    posicion_ranking: posicion,
   };
 }
 

@@ -35,7 +35,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.total_aciertos, 0);
         assert.equal(response.body.porcentaje_acierto, 0);
         assert.equal(response.body.puntuacion_total, 0);
-        assert.ok(response.body.posicion_ranking >= 1);
+        assert.equal(response.body.posicion_ranking, null); // sin puntos no tiene puesto
       });
 
       it("suma todas sus partidas y calcula su posición en el ranking", async () => {
@@ -52,8 +52,8 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.puntuacion_total, 55);
 
         const ranking = (await api.get(`${JUEGO}/ranking?limit=100`, { token: player.token })).body.ranking;
-        const posicionEsperada = ranking.findIndex((j) => j.user_id === response.body.user_id) + 1;
-        assert.equal(response.body.posicion_ranking, posicionEsperada);
+        const enRanking = ranking.find((j) => j.user_id === response.body.user_id);
+        assert.equal(response.body.posicion_ranking, enRanking.posicion);
       });
     });
 

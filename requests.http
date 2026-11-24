@@ -220,7 +220,7 @@ POST {{baseUrl}}/api/inaturalist/juego/terminar
 Authorization: Bearer {{token}}
 
 ### 4.11 Ranking de los 10 mejores (200)
-GET {{baseUrl}}/api/inaturalist/juego/ranking?limit=10
+GET {{baseUrl}}/api/inaturalist/juego/ranking?limit=10&offset=0
 Authorization: Bearer {{token}}
 
 ### 4.12 Ranking con un límite inválido (400)

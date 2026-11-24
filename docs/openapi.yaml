@@ -540,7 +540,9 @@ paths:
     get:
       tags: [Juego]
       summary: Ranking de jugadores
-      description: Ordenado por puntos. Si empatan, por aciertos.
+      description: |
+        Paginado. Solo entran los jugadores con puntos, ordenados por puntos (si empatan, por aciertos).
+        Además de la página, devuelve el total de jugadores con puesto y la fila del jugador logueado (`jugador_actual`).
       operationId: getRanking
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
       parameters:
@@ -548,6 +550,10 @@ paths:
           in: query
           description: Cuántos jugadores mostrar (1 a 100)
           schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - name: offset
+          in: query
+          description: Cuántos jugadores saltear (la página 2 de a 10 es offset=10)
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         "200":
           description: El ranking
@@ -1014,13 +1020,17 @@ components:
         puntos_totales: { type: integer }
         aciertos: { type: integer }
         fallos: { type: integer }
+        posicion: { type: integer, nullable: true, description: "Puesto en el ranking (null si todavía no sumó puntos)", example: 1 }
     Ranking:
       type: object
       properties:
-        total_jugadores: { type: integer, example: 10 }
+        total_jugadores: { type: integer, description: Cuántos jugadores tienen puesto (para la paginación), example: 87 }
         ranking:
           type: array
           items: { $ref: "#/components/schemas/RankingEntry" }
+        jugador_actual:
+          description: La fila del jugador logueado, esté o no en esta página
+          allOf: [{ $ref: "#/components/schemas/RankingEntry" }]
     UserMetrics:
       type: object
       properties:
@@ -1031,7 +1041,7 @@ components:
         total_aciertos: { type: integer }
         porcentaje_acierto: { type: number }
         puntuacion_total: { type: integer }
-        posicion_ranking: { type: integer }
+        posicion_ranking: { type: integer, nullable: true, description: "null si todavía no sumó puntos" }
     AveEstadistica:
       type: object
       properties:
