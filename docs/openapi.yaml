@@ -470,7 +470,7 @@ paths:
       summary: Responder una pregunta
       description: |
         Se valida contra el lote guardado en la partida (no contra lo que mande el cliente).
-        Puntos: 10 por acierto, más bonus por racha (+5 a los 3, +15 a los 5, +50 a los 10 aciertos seguidos).
+        Puntos: 0 si es incorrecta. Si es correcta, 10 + 5 por cada acierto seguido anterior (10, 15, 20, 25...). Un error corta la racha.
       operationId: responder
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
       requestBody:
@@ -540,7 +540,7 @@ paths:
     get:
       tags: [Juego]
       summary: Ranking de jugadores
-      description: Ordenado por puntos (incluido el bonus). Si empatan, por aciertos.
+      description: Ordenado por puntos. Si empatan, por aciertos.
       operationId: getRanking
       security: [{ bearerAuth: [] }, { cookieAuth: [] }]
       parameters:
@@ -893,8 +893,8 @@ components:
       type: object
       properties:
         es_correcta: { type: boolean, example: true }
-        puntos_obtenidos: { type: integer, description: Puntos base más bonus de racha, example: 15 }
-        mensaje: { type: string, example: "¡Correcto! ✓ 🔥 ¡Racha de 3! +5 pts bonus" }
+        puntos_obtenidos: { type: integer, description: Puntos de la respuesta (ya incluyen la racha), example: 20 }
+        mensaje: { type: string, example: "¡Correcto! ✓" }
 
     # --- Partidas y respuestas ---
     Respuesta:

@@ -25,8 +25,8 @@ function registerAlertListeners(bus, notifier) {
     })
   );
 
-  bus.on(EVENTS.STREAK_ACHIEVED, ({ userId, racha, bonus }) =>
-    notify({ subject: "Racha", body: `El usuario ${userId} lleva ${racha} aciertos seguidos (+${bonus} pts de bonus)` })
+  bus.on(EVENTS.STREAK_ACHIEVED, ({ userId, racha }) =>
+    notify({ subject: "Racha", body: `El usuario ${userId} lleva ${racha} aciertos seguidos` })
   );
 
   bus.on(EVENTS.USER_DISCONNECTED, ({ userId, tiempoConectado }) =>

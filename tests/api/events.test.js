@@ -36,7 +36,7 @@ describe("Eventos y notificaciones", () => {
     await esperar();
 
     assert.ok(espia.avisos.some((a) => a.subject === "Racha" && a.body.includes("3 aciertos seguidos")));
-    assert.ok(espia.avisos.some((a) => a.subject === "Partida terminada" && a.body.includes("35 puntos")));
+    assert.ok(espia.avisos.some((a) => a.subject === "Partida terminada" && a.body.includes("45 puntos")));
   });
 
   describe("POST /api/user-connection-log (aviso del front al cerrar la pestaña)", () => {

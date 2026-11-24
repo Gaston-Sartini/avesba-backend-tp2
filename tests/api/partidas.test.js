@@ -112,11 +112,11 @@ for (const persistence of PERSISTENCES) {
 
         const ordenadas = await api.get(`/partidas?user_id=${jugador.id}&sort=-puntos_totales`, { token: adminToken });
         const puntos = ordenadas.body.items.map((p) => p.puntos_totales);
-        assert.deepEqual(puntos, [35, 20, 10]);
+        assert.deepEqual(puntos, [45, 25, 10]);
 
         const pagina = await api.get(`/partidas?user_id=${jugador.id}&sort=puntos_totales&per_page=2&page=2`, { token: adminToken });
         assert.equal(pagina.body.items.length, 1);
-        assert.equal(pagina.body.items[0].puntos_totales, 35);
+        assert.equal(pagina.body.items[0].puntos_totales, 45);
         assert.equal(pagina.body.pages, 2);
       });
 
@@ -133,7 +133,7 @@ for (const persistence of PERSISTENCES) {
         const response = await api.patch(`/partidas/${partida.id}`, { estado: "terminada" }, { token: jugador.token });
         assert.equal(response.status, 200);
         assert.equal(response.body.estado, "terminada");
-        assert.equal(response.body.puntos_totales, 35);
+        assert.equal(response.body.puntos_totales, 45);
         assert.equal(response.body.total_aciertos, 3);
         assert.equal(typeof response.body.terminadaAt, "number");
       });

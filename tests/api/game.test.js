@@ -175,7 +175,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.error.code, "VALIDATION_ERROR");
       });
 
-      it("da bonus de racha a los 3 y 5 aciertos seguidos, y la racha se corta con un error", async () => {
+      it("cada acierto seguido vale 5 puntos más, y la racha se corta con un error", async () => {
         const { token } = await nuevoJugador();
         await iniciar(token);
         const preguntas = await lote(token);
@@ -184,21 +184,23 @@ for (const persistence of PERSISTENCES) {
         for (const pregunta of preguntas.slice(0, 5)) {
           puntos.push((await responder(token, pregunta, pregunta.nombre)).body.puntos_obtenidos);
         }
-        assert.deepEqual(puntos, [10, 10, 15, 10, 25]); // 3ra: 10+5, 5ta: 10+15
+        assert.deepEqual(puntos, [10, 15, 20, 25, 30]);
 
         const error = await responder(token, preguntas[5], nombreIncorrecto(preguntas[5]));
         assert.equal(error.body.puntos_obtenidos, 0);
         const sesion = await api.get(`${JUEGO}/sesion`, { token });
         assert.equal(sesion.body.streak_actual, 0);
+        const otra = await responder(token, preguntas[6], preguntas[6].nombre);
+        assert.equal(otra.body.puntos_obtenidos, 10); // la racha volvió a empezar
       });
 
-      it("10 aciertos seguidos dan el bonus épico de 50", async () => {
+      it("10 aciertos seguidos: la última vale 55 y la partida, 325", async () => {
         const { token } = await nuevoJugador();
         await iniciar(token);
         let ultima;
         for (const pregunta of await lote(token)) ultima = await responder(token, pregunta, pregunta.nombre);
-        assert.equal(ultima.body.puntos_obtenidos, 60);
-        assert.match(ultima.body.mensaje, /RACHA ÉPICA/);
+        assert.equal(ultima.body.puntos_obtenidos, 55);
+        assert.equal((await api.get(`${JUEGO}/sesion`, { token })).body.puntos_totales, 325);
       });
     });
 
@@ -281,7 +283,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.status, 200);
         assert.deepEqual(response.body, {
           session_id: sessionId,
-          puntos_totales: 35, // 10 + 10 + (10 + 5 de racha)
+          puntos_totales: 45, // 10 + 15 + 20
           total_intentos: 4,
           total_aciertos: 3,
           porcentaje_acierto: 75,
@@ -290,7 +292,7 @@ for (const persistence of PERSISTENCES) {
 
         const session = await api.daos.gameSessionsDao.getById(sessionId);
         assert.equal(session.estado, "terminada");
-        assert.equal(session.puntos_totales, 35);
+        assert.equal(session.puntos_totales, 45);
         assert.equal(typeof session.terminadaAt, "number");
         assert.equal((await api.get(`${JUEGO}/sesion`, { token })).status, 404);
       });

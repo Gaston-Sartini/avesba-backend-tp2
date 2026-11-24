@@ -6,7 +6,7 @@
 const EVENTS = {
   USER_REGISTERED: "user.registered", // se registró un jugador nuevo
   GAME_FINISHED: "game.finished", // terminó una partida
-  STREAK_ACHIEVED: "game.streakAchieved", // el jugador logró una racha con bonus (3, 5 o 10+)
+  STREAK_ACHIEVED: "game.streakAchieved", // el jugador llegó a 3, 5 o 10+ aciertos seguidos
   USER_DISCONNECTED: "user.disconnected", // el jugador cerró la pestaña (con el tiempo que estuvo conectado)
 };
 

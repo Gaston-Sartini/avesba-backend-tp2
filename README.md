@@ -47,7 +47,7 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 El jugador ve la **foto real de un ave** y tiene que adivinar cuál es entre **4 opciones**. Cada partida tiene **10 preguntas**:
 
 - Cada acierto suma **10 puntos**.
-- Acertar varias seguidas da **puntos extra por racha**.
+- Cada acierto seguido vale **5 puntos más** que el anterior (10, 15, 20...). Un error corta la racha.
 - Al terminar, el puntaje entra en un **ranking** general.
 
 Las fotos y los nombres salen de **[iNaturalist](https://www.inaturalist.org)**, una red de ciencia ciudadana donde personas de todo el mundo suben fotos de animales y plantas, verificadas por la comunidad. Pedimos las especies **nativas** que hay en Buenos Aires, y a las más conocidas les ponemos el **nombre que se usa acá** (por ejemplo "Biguá" en vez de "Corúa Neotropical").
@@ -133,7 +133,7 @@ Todas viven en los **casos de uso** (`usecases/`), no en las rutas ni en los con
 | No se puede responder dos veces la misma ave en una partida | `usecases/game/answerQuestion.js` | 400 `ALREADY_ANSWERED` |
 | La respuesta se compara contra el lote **guardado** (el cliente no puede hacer trampa) | `usecases/game/answerQuestion.js` | 400 `BIRD_NOT_IN_BATCH` |
 | Al iniciar una partida se cierran las que estaban activas | `usecases/game/startGame.js` | — |
-| Racha: +5 puntos a los 3 aciertos seguidos, +15 a los 5 y +50 a los 10 | `usecases/game/gameRules.js` | — |
+| Puntos: 10 por la primera correcta y 5 más por cada acierto seguido (10, 15, 20...); un error vale 0 y corta la racha | `usecases/game/gameRules.js` | — |
 | 5 logins fallidos con el mismo email bloquean 15 minutos | `usecases/auth/loginUser.js` | 429 `TOO_MANY_ATTEMPTS` |
 | Para cambiar la contraseña hay que mandar la actual | `usecases/users/changePassword.js` | 400 `WRONG_PASSWORD` |
 
@@ -332,7 +332,7 @@ caso de uso ──emit("game.finished")──▶ bus (EventEmitter) ──▶ li
 |---|---|---|---|
 | `user.registered` | `createUser` | Se crea un usuario | Manda la **bienvenida**: *"Se registró Juan Pérez <juan@...>"* |
 | `game.finished` | `closeSession` | Termina una partida | Avisa el **resultado**: *"El usuario 5 hizo 35 puntos (3/4 aciertos)"* |
-| `game.streakAchieved` | `answerQuestion` | El jugador logra una racha con bonus | Avisa la **racha**: *"El usuario 5 lleva 3 aciertos seguidos (+5 pts de bonus)"* |
+| `game.streakAchieved` | `answerQuestion` | El jugador llega a 3, 5 o 10+ aciertos seguidos | Avisa la **racha**: *"El usuario 5 lleva 3 aciertos seguidos"* |
 | `user.disconnected` | `logConnection` | El front avisa que se cerró la pestaña | Registra **cuánto estuvo conectado** |
 
 - **Bus de eventos:** `events/eventBus.js`. Se crea **una vez** en el contenedor y se inyecta en los casos de uso.

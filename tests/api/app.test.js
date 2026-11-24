@@ -99,7 +99,7 @@ describe("Aplicación", () => {
       const fin = await api.post(`${JUEGO}/terminar`, undefined, { cookie });
       assert.equal(fin.status, 200);
       assert.equal(fin.body.total_aciertos, aciertos);
-      assert.equal(fin.body.puntos_totales, 100 + 5 + 15 + 50); // 10 aciertos + bonus de 3, 5 y 10
+      assert.equal(fin.body.puntos_totales, 325); // 10 + 15 + 20 + ... + 55
 
       const ranking = await api.get(`${JUEGO}/ranking`, { cookie });
       assert.equal(ranking.body.ranking[0].nombre, "Game");

@@ -40,7 +40,7 @@ Es la API del juego **AvesBA**: el jugador ve la foto de un ave y tiene que adiv
 | **Login** | Registro, login, renovar tokens, logout. Los tokens viajan en cookies (así los usa el front) o en el header `Authorization`. |
 | **Usuarios** (CRUD) | Mi perfil, cambiar mi contraseña. Los admins y moderadores listan usuarios; los admins los crean, editan, eliminan y resetean contraseñas. |
 | **Partidas** (CRUD) | Listar (con filtros, orden y paginación), ver una partida con sus respuestas, crear, terminar y eliminar (solo admin). |
-| **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (con racha y bonus), retomar si recargás, terminar y ranking. |
+| **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (los puntos crecen con la racha), retomar si recargás, terminar y ranking. |
 | **Métricas** | Las mías (intentos, aciertos, puntos, posición) y las globales (solo admins y moderadores). |
 | **Actividad** | El front avisa cuánto tiempo estuvo conectado el jugador cuando cierra la pestaña. |
 
@@ -180,10 +180,10 @@ Cookie: access_token=eyJ...
                 │   - ¿hay partida activa?          (gameSessionsDao.getActiveByUser)
                 │   - ¿ya respondió esta ave?       (gameResultsDao.findInSession)
                 │   - ¿el ave está en el lote?
-                │   - ¿es correcta? ¿cuánta racha? ¿hay bonus?  (gameRules.js)
+                │   - ¿es correcta? ¿cuánta racha? ¿cuántos puntos?  (gameRules.js)
                 │   - guarda la respuesta           (gameResultsDao.save)
                 │   - actualiza la racha            (gameSessionsDao.update)
-                │   - si hubo bonus, emite un evento (events.emit)
+                │   - si llegó a 3, 5 o 10+ seguidos, emite un evento (events.emit)
                 │
  6. dao/...SequelizeDao.js    Habla con SQLite a través de los modelos (dao/models/).
                 │
@@ -361,12 +361,12 @@ Cada carpeta tiene un archivo por acción y un `make...UseCases.js`, la **factor
 
 | Archivo | Qué hace |
 |---|---|
-| `gameRules.js` | **Funciones puras** con las reglas del juego: 10 puntos por acierto; bonus de +5, +15 y +50 a los 3, 5 y 10 aciertos seguidos; cómo calcular porcentajes y resúmenes; el mensaje de "¡Correcto!". |
+| `gameRules.js` | **Funciones puras** con las reglas del juego: 10 puntos por la primera correcta y 5 más por cada acierto seguido (la misma regla que el front); cómo calcular porcentajes y resúmenes; el mensaje de "¡Correcto!". |
 | `buildQuestions.js` | Arma el lote: elige 10 aves al azar y, para cada una, 4 opciones mezcladas (la correcta y 3 falsas). |
 | `fetchQuestions.js` | Pide las aves al proveedor y arma el lote. Si iNaturalist falla, lo convierte en un error 503 nuestro. |
 | `startGame.js` | (1) Trae las preguntas; si falla, corta antes de crear nada. (2) Cierra las partidas activas que hubiera. (3) Crea la partida **guardando el lote**, así después se valida contra lo guardado y el cliente no puede hacer trampa. |
 | `getQuestions.js` | Si hay partida activa, devuelve **su** lote (siempre el mismo); si no, arma uno nuevo. |
-| `answerQuestion.js` | El de la sección 4: valida, corrige, calcula la racha y el bonus, guarda y emite `game.streakAchieved` si hubo bonus. |
+| `answerQuestion.js` | El de la sección 4: valida, corrige, calcula la racha y los puntos, guarda y emite `game.streakAchieved` a los 3, 5 y 10+ aciertos seguidos. |
 | `getActiveSession.js` | Para retomar la partida: el lote, las respuestas dadas en orden, la racha y los puntos. |
 | `getSessionStats.js` | Puntos, intentos, aciertos y porcentaje de la partida en curso. |
 | `closeSession.js` | Calcula el resumen, marca la partida como `terminada` y emite `game.finished`. Lo usan `finishGame` y `startGame`. |
@@ -527,7 +527,7 @@ Front: GET /users/me   (el navegador agrega solo: Cookie: access_token=eyJ...)
 
 2. GET /juego/aves        getQuestions: devuelve el lote GUARDADO de la partida activa
 
-3. POST /juego/respuesta  (× 10) answerQuestion: valida contra el lote, racha, bonus, guarda
+3. POST /juego/respuesta  (× 10) answerQuestion: valida contra el lote, racha, puntos, guarda
      ◀ { es_correcta, puntos_obtenidos, mensaje }
 
    (si recarga la página)
@@ -541,18 +541,21 @@ Front: GET /users/me   (el navegador agrega solo: Cookie: access_token=eyJ...)
 
 ### 7.5 Cómo se calculan los puntos
 
+Es la misma regla que usa el front (`calcularPuntos` en `src/juego/puntaje.js`): **10 + 5 × (racha − 1)**, donde la racha incluye la respuesta actual.
+
 | Aciertos seguidos | Puntos de esa respuesta |
 |---|---|
 | 1 | 10 |
-| 2 | 10 |
-| **3** | 10 + **5** = 15 |
-| 4 | 10 |
-| **5** | 10 + **15** = 25 |
-| 6 a 9 | 10 |
-| **10 o más** | 10 + **50** = 60 |
+| 2 | 15 |
+| 3 | 20 |
+| 4 | 25 |
+| … | 5 más cada vez |
+| 10 | 55 |
 | Un error | 0, y la racha vuelve a 0 |
 
-Una partida perfecta (10 de 10) da 100 + 5 + 15 + 50 = **170 puntos**.
+Una partida perfecta (10 de 10) da 10 + 15 + 20 + … + 55 = **325 puntos**.
+
+El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya va incluida en los puntos. Se sigue sumando para no perder el puntaje de respuestas viejas.
 
 ---
 
@@ -634,7 +637,7 @@ Corre **290 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `data
 
 | Archivo | Qué prueba |
 |---|---|
-| `tests/unit/gameRules.test.js` | Puntos, bonus de racha, porcentajes y mensajes |
+| `tests/unit/gameRules.test.js` | Puntos por racha, rachas destacadas, porcentajes y mensajes |
 | `tests/unit/buildQuestions.test.js` | Lote de 10 preguntas distintas, 4 opciones con la correcta, error si faltan aves |
 | `tests/unit/buildRanking.test.js` | Orden y desempates del ranking |
 | `tests/unit/argentineNames.test.js` | Los nombres argentinos (los mismos tests que en Python) |

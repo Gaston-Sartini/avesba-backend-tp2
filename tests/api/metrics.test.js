@@ -40,7 +40,7 @@ for (const persistence of PERSISTENCES) {
 
       it("suma todas sus partidas y calcula su posición en el ranking", async () => {
         const player = await registerPlayer(api, { nombre: "Metrics", apellido: "Player" });
-        await jugar(player.token, 3, 1); // 35 puntos
+        await jugar(player.token, 3, 1); // 10 + 15 + 20 = 45 puntos
         await jugar(player.token, 1, 1); // 10 puntos
 
         const response = await api.get(`${METRICAS}/usuario`, { token: player.token });
@@ -49,7 +49,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.total_intentos, 6);
         assert.equal(response.body.total_aciertos, 4);
         assert.equal(response.body.porcentaje_acierto, 66.67);
-        assert.equal(response.body.puntuacion_total, 45);
+        assert.equal(response.body.puntuacion_total, 55);
 
         const ranking = (await api.get(`${JUEGO}/ranking?limit=100`, { token: player.token })).body.ranking;
         const posicionEsperada = ranking.findIndex((j) => j.user_id === response.body.user_id) + 1;
