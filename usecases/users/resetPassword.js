@@ -1,16 +1,11 @@
-// usecases/users/resetPassword.js
 import { randomInt } from "node:crypto";
 import AppError from "../../errors/AppError.js";
 
-const CARACTERES =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const CARACTERES = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 // randomInt de node:crypto es aleatorio "de verdad" (Math.random no sirve para contraseñas)
 function generarPassword(largo = 12) {
-  return Array.from(
-    { length: largo },
-    () => CARACTERES[randomInt(CARACTERES.length)],
-  ).join("");
+  return Array.from({ length: largo }, () => CARACTERES[randomInt(CARACTERES.length)]).join("");
 }
 
 /**
@@ -24,10 +19,7 @@ async function resetPassword(id, { usersDao, hasher }) {
   }
 
   const newPassword = generarPassword();
-  await usersDao.update(id, {
-    passwordHash: await hasher.hash(newPassword),
-    updatedAt: Date.now(),
-  });
+  await usersDao.update(id, { passwordHash: await hasher.hash(newPassword), updatedAt: Date.now() });
 
   return {
     user_id: user.id,

@@ -1,11 +1,11 @@
 import express from "express";
 import validate from "../middlewares/validate.js";
-import {
-  registerSchema,
-  loginSchema,
-  refreshSchema,
-} from "../schemas/authSchema.js";
+import { registerSchema, loginSchema, refreshSchema } from "../schemas/authSchema.js";
 
+/**
+ * Factory de Router de Autenticación. Todas sus rutas son públicas
+ * (son justamente las que te permiten conseguir un token).
+ */
 function createAuthRouter(controller) {
   const router = express.Router();
 

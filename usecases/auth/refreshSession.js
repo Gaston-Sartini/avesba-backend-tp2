@@ -1,4 +1,3 @@
-// usecases/auth/refreshSession.js
 import AppError from "../../errors/AppError.js";
 import issueTokens from "./issueTokens.js";
 
@@ -20,11 +19,7 @@ async function refreshSession(refreshToken, { usersDao, tokens }) {
 
   const user = await usersDao.getById(Number(payload.sub));
   if (!user || !user.is_active) {
-    throw new AppError(
-      "USER_INACTIVE",
-      "Usuario no encontrado o inactivo",
-      401,
-    );
+    throw new AppError("USER_INACTIVE", "Usuario no encontrado o inactivo", 401);
   }
 
   return issueTokens(user, tokens);

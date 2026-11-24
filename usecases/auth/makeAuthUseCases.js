@@ -1,4 +1,3 @@
-// usecases/auth/makeAuthUseCases.js
 import registerUser from "./registerUser.js";
 import loginUser from "./loginUser.js";
 import refreshSession from "./refreshSession.js";
@@ -10,12 +9,9 @@ import refreshSession from "./refreshSession.js";
  */
 function makeAuthUseCases({ usersDao, hasher, tokens, loginAttempts, events }) {
   return {
-    register: (data) =>
-      registerUser(data, { usersDao, hasher, tokens, events }),
-    login: (credentials) =>
-      loginUser(credentials, { usersDao, hasher, tokens, loginAttempts }),
-    refresh: (refreshToken) =>
-      refreshSession(refreshToken, { usersDao, tokens }),
+    register: (data) => registerUser(data, { usersDao, hasher, tokens, events }),
+    login: (credentials) => loginUser(credentials, { usersDao, hasher, tokens, loginAttempts }),
+    refresh: (refreshToken) => refreshSession(refreshToken, { usersDao, tokens }),
   };
 }
 

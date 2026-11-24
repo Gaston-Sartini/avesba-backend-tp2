@@ -1,6 +1,6 @@
-import AppError from "../../errors/AppError.js"
-import { buildQuestions } from "./buildQuestions.js"
-import { PREGUNTAS_POR_PARTIDA } from "./gameRules.js"
+import AppError from "../../errors/AppError.js";
+import { buildQuestions } from "./buildQuestions.js";
+import { PREGUNTAS_POR_PARTIDA } from "./gameRules.js";
 
 /**
  * Pide las aves al proveedor (iNaturalist o el falso) y arma el lote de 10 preguntas.

@@ -1,46 +1,24 @@
-// usecases/users/changePassword.js
 import AppError from "../../errors/AppError.js";
 
-async function changePassword(
-  actor,
-  { current_password, new_password },
-  { usersDao, hasher },
-) {
-  // 1. Buscar al usuario por el id del actor (siempre es "mi" contraseña, nunca la de otro id)
+/**
+ * Caso de Uso: Cambiar mi contraseña.
+ * Regla de negocio: hay que mandar la contraseña ACTUAL correcta además de la nueva.
+ * Así, si alguien encuentra la sesión abierta, no puede cambiar la contraseña y quedarse con la cuenta.
+ */
+async function changePassword(actor, { current_password, new_password }, { usersDao, hasher }) {
   const user = await usersDao.getById(actor.id);
   if (!user) {
-    throw new AppError(
-      "USER_NOT_FOUND",
-      `Usuario ${actor.id} no encontrado`,
-      404,
-    );
+    throw new AppError("USER_NOT_FOUND", `Usuario ${actor.id} no encontrado`, 404);
   }
 
-  // 2. Traer las credenciales completas (con el hash) por email
+  // getCredentialsByEmail es el único método del DAO que trae el hash
   const credentials = await usersDao.getCredentialsByEmail(user.email);
-
-  // 3. Verificar que current_password coincida con credentials.passwordHash (hasher.compare)
-  // 4. Si no coincide, tirar un error (no es USER_NOT_FOUND — pensá un código distinto)
-
-  const isMatch = await hasher.compare(
-    current_password,
-    credentials.passwordHash,
-  );
-  if (!isMatch) {
-    throw new AppError(
-      "WRONG_PASSWORD",
-      "La contraseña actual es incorrecta",
-      400,
-    );
+  const valid = await hasher.compare(current_password, credentials.passwordHash);
+  if (!valid) {
+    throw new AppError("WRONG_PASSWORD", "La contraseña actual es incorrecta", 400);
   }
 
-  // 5. Hashear new_password (hasher.hash)
-  const newHash = await hasher.hash(new_password);
-  // 6. Guardar con usersDao.update(actor.id, { passwordHash: ..., updatedAt: Date.now() })
-  await usersDao.update(actor.id, {
-    passwordHash: newHash,
-    updatedAt: Date.now(),
-  });
+  await usersDao.update(actor.id, { passwordHash: await hasher.hash(new_password), updatedAt: Date.now() });
 
   return { message: "Contraseña actualizada exitosamente" };
 }

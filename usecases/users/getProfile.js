@@ -7,11 +7,7 @@ import AppError from "../../errors/AppError.js";
 async function getProfile(actor, { usersDao }) {
   const user = await usersDao.getById(actor.id);
   if (!user) {
-    throw new AppError(
-      "USER_NOT_FOUND",
-      `Usuario ${actor.id} no encontrado`,
-      404,
-    );
+    throw new AppError("USER_NOT_FOUND", `Usuario ${actor.id} no encontrado`, 404);
   }
   return user;
 }
