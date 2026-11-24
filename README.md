@@ -13,7 +13,7 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 | 📖 **Documentación de la API (Swagger)** | `http://localhost:8000/api-docs`, con el servidor levantado |
 | 🧭 **Guía del código**, archivo por archivo | [GUIA.md](GUIA.md) |
 | 🧪 **Pruebas a mano** | [requests.http](requests.http) (extensión REST Client de VS Code) |
-| ✅ **Tests automáticos** | `npm test`: 290 tests |
+| ✅ **Tests automáticos** | `npm test`: 306 tests |
 
 ---
 
@@ -47,7 +47,7 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 El jugador ve la **foto real de un ave** y tiene que adivinar cuál es entre **4 opciones**. Cada partida tiene **10 preguntas**:
 
 - Cada acierto suma **10 puntos**.
-- Acertar varias seguidas da **puntos extra por racha**.
+- Cada acierto seguido vale **5 puntos más** que el anterior (10, 15, 20...). Un error corta la racha.
 - Al terminar, el puntaje entra en un **ranking** general.
 
 Las fotos y los nombres salen de **[iNaturalist](https://www.inaturalist.org)**, una red de ciencia ciudadana donde personas de todo el mundo suben fotos de animales y plantas, verificadas por la comunidad. Pedimos las especies **nativas** que hay en Buenos Aires, y a las más conocidas les ponemos el **nombre que se usa acá** (por ejemplo "Biguá" en vez de "Corúa Neotropical").
@@ -68,6 +68,7 @@ Este backend es el que usa el frontend de AvesBA (Vue), que se desarrolló en ot
 | **Usuario** (`users`) | Una persona registrada | `id`, `nombre`, `apellido`, `email` (único), `passwordHash`, `role` (`jugador` / `moderador` / `admin`), `is_active`, `createdAt`, `lastLogin` |
 | **Partida** (`game_sessions`) | Un juego de 10 preguntas | `id`, `user_id`, `estado` (`activa` / `terminada`), `preguntas` (el lote, en JSON), `streak_actual`, `streak_maximo`, `puntos_totales`, `total_intentos`, `total_aciertos`, `createdAt`, `terminadaAt` |
 | **Respuesta** (`game_results`) | Lo que respondió el jugador a una pregunta | `id`, `user_id`, `session_id`, `ave_id`, `ave_nombre`, `respuesta_usuario`, `es_correcta`, `puntos_obtenidos`, `bonus_racha` |
+| **Tiempo conectado** (`user_connection_logs`) | Un tramo de tiempo que el jugador estuvo conectado | `id`, `user_id`, `registro_id`, `inicio_ms`, `fin_ms`, `tiempo_conectado_ms`, `createdAt` |
 
 **Usuario** y **Partida** tienen **CRUD completo** (listar, ver, crear, actualizar y eliminar).
 
@@ -79,7 +80,11 @@ Este backend es el que usa el frontend de AvesBA (Vue), que se desarrolló en ot
 │   (users)    │   juega    │(game_sessions│   tiene    │(game_results)│
 └──────────────┘            └──────────────┘            └──────────────┘
        │ 1                                                     ▲ N
-       └───────────────────── responde ────────────────────────┘
+       ├───────────────────── responde ────────────────────────┘
+       │ 1        N ┌────────────────────────┐
+       └───────────▶│    Tiempo conectado    │
+         se conecta │ (user_connection_logs) │
+                    └────────────────────────┘
 ```
 
 ```mermaid
@@ -87,6 +92,7 @@ erDiagram
     USUARIO ||--o{ PARTIDA : juega
     PARTIDA ||--o{ RESPUESTA : tiene
     USUARIO ||--o{ RESPUESTA : responde
+    USUARIO ||--o{ TIEMPO_CONECTADO : "se conecta"
     USUARIO {
         int id PK
         string nombre
@@ -111,10 +117,19 @@ erDiagram
         int puntos_obtenidos
         int bonus_racha
     }
+    TIEMPO_CONECTADO {
+        int id PK
+        int user_id FK
+        string registro_id
+        bigint inicio_ms
+        bigint fin_ms
+        int tiempo_conectado_ms
+    }
 ```
 
 - Un **usuario** juega **muchas partidas** (1 a N).
 - Una **partida** tiene **muchas respuestas** (1 a N). `GET /partidas/:id` devuelve la partida con sus respuestas.
+- Un **usuario** tiene **muchos tramos de tiempo conectado** (1 a N). De ahí salen el tiempo de hoy y el total de "Mis métricas".
 - Las relaciones de Sequelize están centralizadas en `dao/models/index.js`.
 
 ---
@@ -133,7 +148,7 @@ Todas viven en los **casos de uso** (`usecases/`), no en las rutas ni en los con
 | No se puede responder dos veces la misma ave en una partida | `usecases/game/answerQuestion.js` | 400 `ALREADY_ANSWERED` |
 | La respuesta se compara contra el lote **guardado** (el cliente no puede hacer trampa) | `usecases/game/answerQuestion.js` | 400 `BIRD_NOT_IN_BATCH` |
 | Al iniciar una partida se cierran las que estaban activas | `usecases/game/startGame.js` | — |
-| Racha: +5 puntos a los 3 aciertos seguidos, +15 a los 5 y +50 a los 10 | `usecases/game/gameRules.js` | — |
+| Puntos: 10 por la primera correcta y 5 más por cada acierto seguido (10, 15, 20...); un error vale 0 y corta la racha | `usecases/game/gameRules.js` | — |
 | 5 logins fallidos con el mismo email bloquean 15 minutos | `usecases/auth/loginUser.js` | 429 `TOO_MANY_ATTEMPTS` |
 | Para cambiar la contraseña hay que mandar la actual | `usecases/users/changePassword.js` | 400 `WRONG_PASSWORD` |
 
@@ -243,9 +258,9 @@ Se leen **solamente** en `config/config.js`. El `.env` **no se sube a Git**; `.e
 | Variable | Valor por defecto | Para qué sirve |
 |---|---|---|
 | `PORT` | `8000` | Puerto del servidor |
-| `NODE_ENV` | `development` | `production` activa las cookies `secure` (solo HTTPS) |
+| `NODE_ENV` | `development` | `production` activa las cookies `secure` y `SameSite=None` (solo HTTPS, para un front en otro dominio) |
 | `APP_NAME` / `APP_VERSION` | `AvesBA API` / `1.0.0` | Lo que responde `GET /` |
-| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué páginas web se puede llamar a la API (separadas por coma) |
+| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué páginas web se puede llamar a la API (separadas por coma). localhost en cualquier puerto se acepta siempre. |
 | **`PERSISTENCE_TYPE`** | `memory` | **`memory`** (array de JS, se borra al reiniciar) o **`sequelize`** (SQLite) |
 | `DB_STORAGE` | `./database.sqlite` | Archivo de la base (`:memory:` = base en memoria) |
 | `NOTIFIER_TYPE` | `console` | Dónde van los avisos de los eventos: `console`, `file` (`notifications.log`) o `none` |
@@ -332,7 +347,7 @@ caso de uso ──emit("game.finished")──▶ bus (EventEmitter) ──▶ li
 |---|---|---|---|
 | `user.registered` | `createUser` | Se crea un usuario | Manda la **bienvenida**: *"Se registró Juan Pérez <juan@...>"* |
 | `game.finished` | `closeSession` | Termina una partida | Avisa el **resultado**: *"El usuario 5 hizo 35 puntos (3/4 aciertos)"* |
-| `game.streakAchieved` | `answerQuestion` | El jugador logra una racha con bonus | Avisa la **racha**: *"El usuario 5 lleva 3 aciertos seguidos (+5 pts de bonus)"* |
+| `game.streakAchieved` | `answerQuestion` | El jugador llega a 3, 5 o 10+ aciertos seguidos | Avisa la **racha**: *"El usuario 5 lleva 3 aciertos seguidos"* |
 | `user.disconnected` | `logConnection` | El front avisa que se cerró la pestaña | Registra **cuánto estuvo conectado** |
 
 - **Bus de eventos:** `events/eventBus.js`. Se crea **una vez** en el contenedor y se inyecta en los casos de uso.
@@ -470,7 +485,7 @@ Los errores esperados se lanzan con **`AppError`** (`errors/AppError.js`), que t
 npm test
 ```
 
-- **290 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
+- **306 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
 - **No necesitan internet ni tocan tu base:** usan SQLite en memoria y un proveedor de aves falso.
 - **Tests unitarios** (`tests/unit/`): reglas del juego, armado de preguntas, ranking, seguridad, y el **contrato de los DAOs** (los de memoria y los de SQLite tienen que comportarse igual).
 - **Tests de la API** (`tests/api/`): cada endpoint con sus casos de éxito y de error, **corridos en los dos modos de persistencia**. También verifican eventos, CORS, el arranque y que Swagger documente todas las rutas.
@@ -516,5 +531,5 @@ npm test
 | README | Este archivo |
 | **Opcional:** filtros, orden y paginación | `GET /partidas?estado=&sort=&page=`, `GET /users?role=&page=` |
 | **Opcional:** segundo evento con notificador adicional | 4 eventos; notificadores de consola y archivo |
-| **Opcional:** tests de los casos de uso | `tests/` (290 tests, con el DAO en memoria como doble) |
+| **Opcional:** tests de los casos de uso | `tests/` (306 tests, con el DAO en memoria como doble) |
 | **Opcional:** seguridad (hash y JWT) | `security/`, `middlewares/auth.js` |

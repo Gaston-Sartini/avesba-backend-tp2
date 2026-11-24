@@ -9,10 +9,9 @@ class ActivityController {
     this.#useCases = useCases;
   }
 
-  // POST /api/user-connection-log — 204: recibido, sin nada que devolver (sendBeacon no lee la respuesta)
+  // POST /api/user-connection-log — 201: se guardó el tramo
   connectionLog = async (req, res) => {
-    await this.#useCases.logConnection(req.body);
-    res.status(204).send();
+    res.status(201).json(await this.#useCases.logConnection(req.body, req.user));
   };
 }
 

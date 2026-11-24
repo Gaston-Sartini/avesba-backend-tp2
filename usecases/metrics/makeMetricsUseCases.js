@@ -4,9 +4,9 @@ import getGlobalMetrics from "./getGlobalMetrics.js";
 /**
  * Factory de Casos de Uso de Métricas.
  */
-function makeMetricsUseCases({ usersDao, gameResultsDao }) {
+function makeMetricsUseCases({ usersDao, gameResultsDao, connectionLogsDao }) {
   return {
-    getUserMetrics: (actor) => getUserMetrics(actor, { usersDao, gameResultsDao }),
+    getUserMetrics: (actor) => getUserMetrics(actor, { usersDao, gameResultsDao, connectionLogsDao }),
     getGlobalMetrics: () => getGlobalMetrics({ gameResultsDao }),
   };
 }

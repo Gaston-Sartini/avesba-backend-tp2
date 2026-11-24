@@ -20,7 +20,7 @@ function makeGameUseCases({ usersDao, gameSessionsDao, gameResultsDao, birdsProv
     getActiveSession: (actor) => getActiveSession(actor, deps),
     getSessionStats: (actor) => getSessionStats(actor, deps),
     finishGame: (actor) => finishGame(actor, deps),
-    getRanking: (options) => getRanking(options, deps),
+    getRanking: (options, actor) => getRanking(options, actor, deps),
   };
 }
 

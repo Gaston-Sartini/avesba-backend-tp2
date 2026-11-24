@@ -1,6 +1,6 @@
 import AppError from "../../errors/AppError.js";
 import EVENTS from "../../events/eventNames.js";
-import { evaluarRespuesta, calcularBonusRacha, armarMensaje } from "./gameRules.js";
+import { evaluarRespuesta, calcularPuntos, esRachaDestacada, armarMensaje } from "./gameRules.js";
 
 /**
  * Caso de Uso: Responder una pregunta.
@@ -10,8 +10,9 @@ import { evaluarRespuesta, calcularBonusRacha, armarMensaje } from "./gameRules.
  *  3. La partida tiene que tener lote (las partidas viejas sin lote no se pueden validar).
  *  4. El ave tiene que pertenecer al lote de la partida.
  *  5. El nombre correcto sale del LOTE, nunca del cliente (si lo mandara, podría hacer trampa).
- *  6. La racha sube con cada acierto y vuelve a 0 con un error. A los 3, 5 y 10+ aciertos seguidos hay bonus.
- * Efecto secundario desacoplado: si hubo bonus, emite "game.streakAchieved".
+ *  6. La racha sube con cada acierto y vuelve a 0 con un error. Los puntos crecen con la racha:
+ *     10, 15, 20, 25... (ver calcularPuntos).
+ * Efecto secundario desacoplado: a los 3, 5 y 10+ aciertos seguidos emite "game.streakAchieved".
  */
 async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessionsDao, gameResultsDao, events }) {
   const session = await gameSessionsDao.getActiveByUser(actor.id);
@@ -33,12 +34,12 @@ async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessio
     throw new AppError("BIRD_NOT_IN_BATCH", "El ave no pertenece al lote de la sesión", 400);
   }
 
-  const { esCorrecta, puntos } = evaluarRespuesta(respuesta_usuario, pregunta.nombre);
+  const esCorrecta = evaluarRespuesta(respuesta_usuario, pregunta.nombre);
 
-  // Racha: sube con cada acierto, se corta con un error
+  // Racha: sube con cada acierto, se corta con un error. Los puntos ya incluyen la racha.
   const racha = esCorrecta ? session.streak_actual + 1 : 0;
   const rachaMaxima = Math.max(session.streak_maximo, racha);
-  const bonus = esCorrecta ? calcularBonusRacha(racha) : 0;
+  const puntos = calcularPuntos(esCorrecta, racha);
 
   await gameResultsDao.save({
     user_id: actor.id,
@@ -48,21 +49,21 @@ async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessio
     respuesta_usuario,
     es_correcta: esCorrecta,
     puntos_obtenidos: puntos,
-    bonus_racha: bonus,
+    bonus_racha: 0, // la racha ya está incluida en los puntos
     streak_en_respuesta: racha,
     createdAt: Date.now(),
   });
 
   await gameSessionsDao.update(session.id, { streak_actual: racha, streak_maximo: rachaMaxima });
 
-  if (bonus > 0) {
-    events.emit(EVENTS.STREAK_ACHIEVED, { userId: actor.id, sessionId: session.id, racha, bonus });
+  if (esCorrecta && esRachaDestacada(racha)) {
+    events.emit(EVENTS.STREAK_ACHIEVED, { userId: actor.id, sessionId: session.id, racha });
   }
 
   return {
     es_correcta: esCorrecta,
-    puntos_obtenidos: puntos + bonus,
-    mensaje: armarMensaje(esCorrecta, racha, bonus),
+    puntos_obtenidos: puntos,
+    mensaje: armarMensaje(esCorrecta),
   };
 }
 

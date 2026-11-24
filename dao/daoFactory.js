@@ -5,6 +5,8 @@ import GameSessionsMemoryDao from "./gameSessions/GameSessionsMemoryDao.js";
 import GameSessionsSequelizeDao from "./gameSessions/GameSessionsSequelizeDao.js";
 import GameResultsMemoryDao from "./gameResults/GameResultsMemoryDao.js";
 import GameResultsSequelizeDao from "./gameResults/GameResultsSequelizeDao.js";
+import ConnectionLogsMemoryDao from "./connectionLogs/ConnectionLogsMemoryDao.js";
+import ConnectionLogsSequelizeDao from "./connectionLogs/ConnectionLogsSequelizeDao.js";
 
 /**
  * Factory de DAOs.
@@ -27,4 +29,8 @@ function getGameResultsDao() {
   return usingSequelize() ? new GameResultsSequelizeDao() : new GameResultsMemoryDao();
 }
 
-export { getUsersDao, getGameSessionsDao, getGameResultsDao };
+function getConnectionLogsDao() {
+  return usingSequelize() ? new ConnectionLogsSequelizeDao() : new ConnectionLogsMemoryDao();
+}
+
+export { getUsersDao, getGameSessionsDao, getGameResultsDao, getConnectionLogsDao };

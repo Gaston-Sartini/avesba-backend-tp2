@@ -1,4 +1,3 @@
-// usecases/users/deleteUser.js
 import AppError from "../../errors/AppError.js";
 
 /**
@@ -6,20 +5,12 @@ import AppError from "../../errors/AppError.js";
  * Reglas de negocio:
  *  - Un admin no puede eliminarse a sí mismo (se quedaría el sistema sin quien lo administre).
  *  - El usuario tiene que existir.
- *  - Se borran también sus partidas y respuestas: primero las respuestas, después las partidas
+ *  - Se borran también sus partidas, respuestas y tiempo conectado: primero lo que depende del usuario
  *    y al final el usuario (la base no deja borrar algo que otra tabla todavía referencia).
  */
-async function deleteUser(
-  id,
-  actor,
-  { usersDao, gameSessionsDao, gameResultsDao },
-) {
+async function deleteUser(id, actor, { usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao }) {
   if (actor.id === id) {
-    throw new AppError(
-      "CANNOT_DELETE_SELF",
-      "No podés eliminar tu propio usuario",
-      409,
-    );
+    throw new AppError("CANNOT_DELETE_SELF", "No podés eliminar tu propio usuario", 409);
   }
 
   const user = await usersDao.getById(id);
@@ -29,6 +20,7 @@ async function deleteUser(
 
   await gameResultsDao.deleteByUser(id);
   await gameSessionsDao.deleteByUser(id);
+  await connectionLogsDao.deleteByUser(id);
   await usersDao.delete(id);
 }
 

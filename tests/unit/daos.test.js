@@ -21,11 +21,36 @@ const nuevoUsuario = (cambios = {}) => ({
 
 for (const persistence of PERSISTENCES) {
   describe(`DAOs (${persistence})`, () => {
-    let usersDao, gameSessionsDao, gameResultsDao;
+    let usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao;
 
     before(async () => {
-      ({ usersDao, gameSessionsDao, gameResultsDao } = await createDaos(persistence));
-      for (const dao of [usersDao, gameSessionsDao, gameResultsDao]) await dao.init?.();
+      ({ usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao } = await createDaos(persistence));
+      for (const dao of [usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao]) await dao.init?.();
+    });
+
+    describe("Tiempo conectado", () => {
+      it("guarda tramos, los busca por registro y los borra por usuario", async () => {
+        const { id: userId } = await usersDao.save(nuevoUsuario());
+        const tramo = { user_id: userId, registro_id: "abc", inicio_ms: 1000, fin_ms: 6000, tiempo_conectado_ms: 5000, createdAt: 6000 };
+        const guardado = await connectionLogsDao.save({ ...tramo, id: 9999 });
+        assert.ok(Number.isInteger(guardado.id));
+        assert.notEqual(guardado.id, 9999);
+        await connectionLogsDao.save({ user_id: userId, tiempo_conectado_ms: 2000, createdAt: 7000 });
+
+        assert.deepEqual(await connectionLogsDao.getByRegistro(userId, "abc"), { ...tramo, id: guardado.id });
+        assert.equal(await connectionLogsDao.getByRegistro(userId, "otro"), null);
+        const todos = await connectionLogsDao.getAllByUser(userId);
+        assert.deepEqual(
+          todos.map((l) => [l.tiempo_conectado_ms, l.inicio_ms]),
+          [
+            [5000, 1000],
+            [2000, null],
+          ]
+        );
+
+        assert.equal(await connectionLogsDao.deleteByUser(userId), 2);
+        assert.deepEqual(await connectionLogsDao.getAllByUser(userId), []);
+      });
     });
 
     describe("Usuarios", () => {

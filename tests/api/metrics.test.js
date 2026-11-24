@@ -35,12 +35,23 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.total_aciertos, 0);
         assert.equal(response.body.porcentaje_acierto, 0);
         assert.equal(response.body.puntuacion_total, 0);
-        assert.ok(response.body.posicion_ranking >= 1);
+        assert.equal(response.body.posicion_ranking, null); // sin puntos no tiene puesto
+        assert.equal(response.body.tiempo_conectado_hoy_seg, 0);
+        assert.equal(response.body.tiempo_conectado_total_seg, 0);
+      });
+
+      it("suma el tiempo conectado de hoy y el total", async () => {
+        const { token } = await registerPlayer(api);
+        const fin = Date.now();
+        await api.post("/api/user-connection-log", { registroId: "a", inicioMs: fin - 90_000, finMs: fin, tiempoConectado: 90_000 }, { token });
+        const response = await api.get(`${METRICAS}/usuario`, { token });
+        assert.equal(response.body.tiempo_conectado_total_seg, 90);
+        assert.ok(response.body.tiempo_conectado_hoy_seg <= 90);
       });
 
       it("suma todas sus partidas y calcula su posición en el ranking", async () => {
         const player = await registerPlayer(api, { nombre: "Metrics", apellido: "Player" });
-        await jugar(player.token, 3, 1); // 35 puntos
+        await jugar(player.token, 3, 1); // 10 + 15 + 20 = 45 puntos
         await jugar(player.token, 1, 1); // 10 puntos
 
         const response = await api.get(`${METRICAS}/usuario`, { token: player.token });
@@ -49,11 +60,11 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.total_intentos, 6);
         assert.equal(response.body.total_aciertos, 4);
         assert.equal(response.body.porcentaje_acierto, 66.67);
-        assert.equal(response.body.puntuacion_total, 45);
+        assert.equal(response.body.puntuacion_total, 55);
 
         const ranking = (await api.get(`${JUEGO}/ranking?limit=100`, { token: player.token })).body.ranking;
-        const posicionEsperada = ranking.findIndex((j) => j.user_id === response.body.user_id) + 1;
-        assert.equal(response.body.posicion_ranking, posicionEsperada);
+        const enRanking = ranking.find((j) => j.user_id === response.body.user_id);
+        assert.equal(response.body.posicion_ranking, enRanking.posicion);
       });
     });
 

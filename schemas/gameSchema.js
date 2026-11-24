@@ -26,6 +26,8 @@ const rankingQuerySchema = z.object({
     .min(1, "limit debe ser al menos 1")
     .max(100, "limit no puede ser mayor a 100")
     .default(10),
+  // Cuántos jugadores saltear: la página 2 de a 10 es offset=10
+  offset: z.coerce.number().int("offset debe ser un entero").min(0, "offset no puede ser negativo").default(0),
 });
 
 export { birdsQuerySchema, answerSchema, rankingQuerySchema };

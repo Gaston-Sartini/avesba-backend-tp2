@@ -40,9 +40,9 @@ class GameController {
     res.json(await this.#useCases.finishGame(req.user));
   };
 
-  // GET /api/inaturalist/juego/ranking?limit=
+  // GET /api/inaturalist/juego/ranking?limit=&offset=
   ranking = async (req, res) => {
-    res.json(await this.#useCases.getRanking(req.query));
+    res.json(await this.#useCases.getRanking(req.query, req.user));
   };
 }
 

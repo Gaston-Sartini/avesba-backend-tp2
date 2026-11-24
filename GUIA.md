@@ -40,9 +40,9 @@ Es la API del juego **AvesBA**: el jugador ve la foto de un ave y tiene que adiv
 | **Login** | Registro, login, renovar tokens, logout. Los tokens viajan en cookies (así los usa el front) o en el header `Authorization`. |
 | **Usuarios** (CRUD) | Mi perfil, cambiar mi contraseña. Los admins y moderadores listan usuarios; los admins los crean, editan, eliminan y resetean contraseñas. |
 | **Partidas** (CRUD) | Listar (con filtros, orden y paginación), ver una partida con sus respuestas, crear, terminar y eliminar (solo admin). |
-| **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (con racha y bonus), retomar si recargás, terminar y ranking. |
-| **Métricas** | Las mías (intentos, aciertos, puntos, posición) y las globales (solo admins y moderadores). |
-| **Actividad** | El front avisa cuánto tiempo estuvo conectado el jugador cuando cierra la pestaña. |
+| **Juego** | Iniciar partida (10 preguntas sacadas de iNaturalist), responder (los puntos crecen con la racha), retomar si recargás, terminar y ranking. |
+| **Métricas** | Las mías (intentos, aciertos, puntos, posición, tiempo conectado hoy y en total) y las globales (solo admins y moderadores). |
+| **Tiempo conectado** | El front manda cuánto tiempo estuvo conectado el jugador al cerrar sesión o la pestaña. Se guarda y aparece en "Mis métricas" (hoy y en total). |
 
 Hay **tres roles**:
 - `jugador`: el que se registra.
@@ -110,7 +110,7 @@ Servidor AvesBA corriendo en http://localhost:8000
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 15 | Cuánto dura el token de acceso. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | Cuánto dura el token para renovar. |
 | `SEED_PLAYERS` | 100 | Cuántos jugadores de prueba cargar (0 = ninguno). |
-| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué página web se puede llamar a la API (la del front de Vite). |
+| `CORS_ORIGIN` | `http://localhost:5173` | Desde qué página web se puede llamar a la API. localhost en cualquier puerto se acepta siempre; acá va, por ejemplo, la dirección del front publicado. |
 
 ---
 
@@ -180,10 +180,10 @@ Cookie: access_token=eyJ...
                 │   - ¿hay partida activa?          (gameSessionsDao.getActiveByUser)
                 │   - ¿ya respondió esta ave?       (gameResultsDao.findInSession)
                 │   - ¿el ave está en el lote?
-                │   - ¿es correcta? ¿cuánta racha? ¿hay bonus?  (gameRules.js)
+                │   - ¿es correcta? ¿cuánta racha? ¿cuántos puntos?  (gameRules.js)
                 │   - guarda la respuesta           (gameResultsDao.save)
                 │   - actualiza la racha            (gameSessionsDao.update)
-                │   - si hubo bonus, emite un evento (events.emit)
+                │   - si llegó a 3, 5 o 10+ seguidos, emite un evento (events.emit)
                 │
  6. dao/...SequelizeDao.js    Habla con SQLite a través de los modelos (dao/models/).
                 │
@@ -222,7 +222,7 @@ BackendNode/
 │   ├── game/             iniciar, preguntas, responder, retomar, terminar, ranking
 │   ├── partidas/         el CRUD de partidas
 │   ├── metrics/          métricas del jugador y globales
-│   ├── activity/         aviso de desconexión
+│   ├── activity/         guardar el tiempo conectado
 │   └── seed/             los 100 jugadores de prueba
 │
 ├── dao/                  El acceso a los datos
@@ -281,7 +281,7 @@ Todas son *factories*: reciben el controller (y los middlewares de auth) y devue
 | `gameRoutes.js` | `/api/inaturalist/juego` | Las 7 rutas del juego, todas con login. |
 | `partidasRoutes.js` | `/partidas` | El CRUD de partidas, todo con login. Borrar es solo para admins. |
 | `metricsRoutes.js` | `/api/inaturalist/metricas` | `usuario` (con login) y `global` (solo admin y moderador). |
-| `activityRoutes.js` | `/api` | `POST /user-connection-log`. Usa `express.text()` + `parseTextJson`, porque el front la manda como texto plano. |
+| `activityRoutes.js` | `/api` | `POST /user-connection-log`, con login. Usa `express.text()` + `parseTextJson`, porque el front la manda como texto plano. |
 
 ### `middlewares/`
 
@@ -301,8 +301,8 @@ Todas son *factories*: reciben el controller (y los middlewares de auth) y devue
 | `authSchema.js` | Registro (`nombre`, `apellido`, `email`, `password` de 8 a 72 caracteres). **No acepta `role`**: si un endpoint público dejara elegir el rol, cualquiera se registraría como admin. También login y refresh. |
 | `partidaSchema.js` | Query del listado (`user_id`, `estado`, `sort`, `page`, `per_page`), body para crear (`place_id`, `locale`) y para terminar (`estado: "terminada"`). |
 | `userSchema.js` | Crear usuario (como el registro, pero con `role`), cambio de contraseña, edición de usuario (`role` solo puede ser `jugador`, `moderador` o `admin`), query del listado (`page`, `per_page`, `role`) e id de la URL. |
-| `gameSchema.js` | Query de las aves (`place_id`, `locale`, con valores por defecto), body de la respuesta (`ave_id`, `respuesta_usuario`) y `limit` del ranking (1 a 100). |
-| `activitySchema.js` | `userId` (o `null`) y `tiempoConectado` en milisegundos. |
+| `gameSchema.js` | Query de las aves (`place_id`, `locale`, con valores por defecto), body de la respuesta (`ave_id`, `respuesta_usuario`) y `limit` (1 a 100) y `offset` del ranking. |
+| `activitySchema.js` | `tiempoConectado` en milisegundos (de 0 a 24 h) y, opcionales, `inicioMs`, `finMs` y `registroId` del tramo. |
 
 ### `controllers/`
 
@@ -361,31 +361,32 @@ Cada carpeta tiene un archivo por acción y un `make...UseCases.js`, la **factor
 
 | Archivo | Qué hace |
 |---|---|
-| `gameRules.js` | **Funciones puras** con las reglas del juego: 10 puntos por acierto; bonus de +5, +15 y +50 a los 3, 5 y 10 aciertos seguidos; cómo calcular porcentajes y resúmenes; el mensaje de "¡Correcto!". |
+| `gameRules.js` | **Funciones puras** con las reglas del juego: 10 puntos por la primera correcta y 5 más por cada acierto seguido (la misma regla que el front); cómo calcular porcentajes y resúmenes; el mensaje de "¡Correcto!". |
 | `buildQuestions.js` | Arma el lote: elige 10 aves al azar y, para cada una, 4 opciones mezcladas (la correcta y 3 falsas). |
 | `fetchQuestions.js` | Pide las aves al proveedor y arma el lote. Si iNaturalist falla, lo convierte en un error 503 nuestro. |
 | `startGame.js` | (1) Trae las preguntas; si falla, corta antes de crear nada. (2) Cierra las partidas activas que hubiera. (3) Crea la partida **guardando el lote**, así después se valida contra lo guardado y el cliente no puede hacer trampa. |
 | `getQuestions.js` | Si hay partida activa, devuelve **su** lote (siempre el mismo); si no, arma uno nuevo. |
-| `answerQuestion.js` | El de la sección 4: valida, corrige, calcula la racha y el bonus, guarda y emite `game.streakAchieved` si hubo bonus. |
+| `answerQuestion.js` | El de la sección 4: valida, corrige, calcula la racha y los puntos, guarda y emite `game.streakAchieved` a los 3, 5 y 10+ aciertos seguidos. |
 | `getActiveSession.js` | Para retomar la partida: el lote, las respuestas dadas en orden, la racha y los puntos. |
 | `getSessionStats.js` | Puntos, intentos, aciertos y porcentaje de la partida en curso. |
 | `closeSession.js` | Calcula el resumen, marca la partida como `terminada` y emite `game.finished`. Lo usan `finishGame` y `startGame`. |
 | `finishGame.js` | Termina la partida activa (si no hay, 404). |
-| `buildRanking.js` | Función pura: con los usuarios y todas las respuestas arma el ranking ordenado (por puntos; si empatan, por aciertos y antigüedad). |
-| `getRanking.js` | Los primeros `limit` del ranking. |
+| `buildRanking.js` | Función pura: con los usuarios y todas las respuestas arma el ranking de los que tienen puntos, numerado y ordenado (por puntos; si empatan, por aciertos y antigüedad). |
+| `getRanking.js` | Una página del ranking (`limit` y `offset`), el total de jugadores con puesto y la fila del jugador logueado (`jugador_actual`). |
 
 **`usecases/metrics/`**
 
 | Archivo | Qué hace |
 |---|---|
-| `getUserMetrics.js` | Intentos, aciertos, % y puntos de todas mis partidas, y mi posición (sale del mismo `buildRanking`). |
+| `getUserMetrics.js` | Intentos, aciertos, % y puntos de todas mis partidas, mi posición (sale del mismo `buildRanking`; `null` si no sumé puntos) y mi tiempo conectado hoy y en total. |
+| `connectionTime.js` | Funciones puras: cuánto de cada tramo cae en el día de hoy (hora de Argentina) y el total. |
 | `getGlobalMetrics.js` | Cuántos jugaron, cuántas respuestas hay, el % global, y el ave más acertada y la menos acertada. Si nadie jugó todavía, devuelve `null` en las aves. |
 
 **`usecases/activity/`** y **`usecases/seed/`**
 
 | Archivo | Qué hace |
 |---|---|
-| `logConnection.js` | Solo emite el evento `user.disconnected`. |
+| `logConnection.js` | Guarda el tramo a nombre del usuario logueado. Revisa que el tramo sea coherente y que un reintento con el mismo `registroId` no se guarde dos veces (si es otro tramo, 409). Emite `user.disconnected`. |
 | `seedPlayers.js` | Crea N jugadores de prueba (los 3 primeros son moderadores), cada uno con 1 a 5 partidas simuladas con **las mismas reglas** del juego real. Si ya existen, no hace nada. |
 
 ### `dao/`: los datos
@@ -408,7 +409,8 @@ Los DAO de Sequelize tienen además `init()`, que prepara la base y crea las tab
 | `UserModel.js` | `users` | nombre, apellido, email (único), passwordHash, role, is_active, createdAt, updatedAt, lastLogin |
 | `GameSessionModel.js` | `game_sessions` | user_id, estado (`activa`/`terminada`), preguntas (JSON), racha actual y máxima, puntos, intentos, aciertos |
 | `GameResultModel.js` | `game_results` | user_id, session_id, ave_id, ave_nombre, respuesta, es_correcta, puntos_obtenidos, bonus_racha |
-| `index.js` | — | **Las relaciones**: un usuario tiene muchas partidas, una partida tiene muchas respuestas, y un usuario tiene muchas respuestas. |
+| `ConnectionLogModel.js` | `user_connection_logs` | user_id, registro_id, inicio_ms, fin_ms, tiempo_conectado_ms, createdAt |
+| `index.js` | — | **Las relaciones**: un usuario tiene muchas partidas, una partida tiene muchas respuestas, un usuario tiene muchas respuestas y muchos tramos de tiempo conectado. |
 
 Los nombres de los campos son **los mismos que en la base de Python**, porque el frontend los lee tal cual (`puntos_totales`, `es_correcta`, `role`…).
 
@@ -475,7 +477,7 @@ npm run dev
  └─ index.js → createApp() (app.js)
       ├─ cors, logger, express.json, cookieParser
       ├─ buildContainer() (container.js)
-      │    ├─ daoFactory → 3 DAOs → init() → initDatabase(): WAL + crear tablas
+      │    ├─ daoFactory → 4 DAOs → init() → initDatabase(): WAL + crear tablas
       │    ├─ birdsProviderFactory → iNaturalist
       │    ├─ eventBus + registerAlertListeners(notificador)
       │    ├─ hasher, tokens, loginAttempts, auth (authenticate / authorize)
@@ -527,7 +529,7 @@ Front: GET /users/me   (el navegador agrega solo: Cookie: access_token=eyJ...)
 
 2. GET /juego/aves        getQuestions: devuelve el lote GUARDADO de la partida activa
 
-3. POST /juego/respuesta  (× 10) answerQuestion: valida contra el lote, racha, bonus, guarda
+3. POST /juego/respuesta  (× 10) answerQuestion: valida contra el lote, racha, puntos, guarda
      ◀ { es_correcta, puntos_obtenidos, mensaje }
 
    (si recarga la página)
@@ -541,18 +543,21 @@ Front: GET /users/me   (el navegador agrega solo: Cookie: access_token=eyJ...)
 
 ### 7.5 Cómo se calculan los puntos
 
+Es la misma regla que usa el front (`calcularPuntos` en `src/juego/puntaje.js`): **10 + 5 × (racha − 1)**, donde la racha incluye la respuesta actual.
+
 | Aciertos seguidos | Puntos de esa respuesta |
 |---|---|
 | 1 | 10 |
-| 2 | 10 |
-| **3** | 10 + **5** = 15 |
-| 4 | 10 |
-| **5** | 10 + **15** = 25 |
-| 6 a 9 | 10 |
-| **10 o más** | 10 + **50** = 60 |
+| 2 | 15 |
+| 3 | 20 |
+| 4 | 25 |
+| … | 5 más cada vez |
+| 10 | 55 |
 | Un error | 0, y la racha vuelve a 0 |
 
-Una partida perfecta (10 de 10) da 100 + 5 + 15 + 50 = **170 puntos**.
+Una partida perfecta (10 de 10) da 10 + 15 + 20 + … + 55 = **325 puntos**.
+
+El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya va incluida en los puntos. Se sigue sumando para no perder el puntaje de respuestas viejas.
 
 ---
 
@@ -586,10 +591,10 @@ Una partida perfecta (10 de 10) da 100 + 5 + 15 + 50 = **170 puntos**.
 | GET | `/api/inaturalist/juego/sesion` | 🔐 | Retomar la partida activa |
 | GET | `/api/inaturalist/juego/sesion/estadisticas` | 🔐 | Estadísticas de la partida activa |
 | POST | `/api/inaturalist/juego/terminar` | 🔐 | Terminar la partida |
-| GET | `/api/inaturalist/juego/ranking?limit=` | 🔐 | Ranking |
+| GET | `/api/inaturalist/juego/ranking?limit=&offset=` | 🔐 | Ranking paginado, con tu posición |
 | GET | `/api/inaturalist/metricas/usuario` | 🔐 | Mis métricas |
 | GET | `/api/inaturalist/metricas/global` | 👮 | Métricas de todo el sistema |
-| POST | `/api/user-connection-log` | 🔓 | Aviso de desconexión del front |
+| POST | `/api/user-connection-log` | 🔐 | Guardar tiempo conectado |
 
 ### Códigos de error
 
@@ -630,11 +635,11 @@ Una partida perfecta (10 de 10) da 100 + 5 + 15 + 50 = **170 puntos**.
 npm test
 ```
 
-Corre **290 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
+Corre **306 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
 
 | Archivo | Qué prueba |
 |---|---|
-| `tests/unit/gameRules.test.js` | Puntos, bonus de racha, porcentajes y mensajes |
+| `tests/unit/gameRules.test.js` | Puntos por racha, rachas destacadas, porcentajes y mensajes |
 | `tests/unit/buildQuestions.test.js` | Lote de 10 preguntas distintas, 4 opciones con la correcta, error si faltan aves |
 | `tests/unit/buildRanking.test.js` | Orden y desempates del ranking |
 | `tests/unit/argentineNames.test.js` | Los nombres argentinos (los mismos tests que en Python) |
@@ -646,8 +651,9 @@ Corre **290 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `data
 | `tests/api/partidas.test.js` | El CRUD de partidas: filtros, orden, paginación, dueño, terminar dos veces, borrar |
 | `tests/api/docs.test.js` | Swagger en `/api-docs`: que documente **todas** las rutas del código y que los `$ref` existan |
 | `tests/api/game.test.js` | Toda la partida, el lote, las trampas, la racha, retomar, ranking, iNaturalist caído |
-| `tests/api/metrics.test.js` | Métricas propias y globales, permisos, sistema sin partidas |
-| `tests/api/events.test.js` | Que cada evento llegue al notificador; el aviso de desconexión |
+| `tests/api/metrics.test.js` | Métricas propias (incluido el tiempo conectado) y globales, permisos, sistema sin partidas |
+| `tests/unit/connectionTime.test.js` | El tiempo conectado de hoy (día de Argentina) y el total |
+| `tests/api/events.test.js` | Que cada evento llegue al notificador; guardar el tiempo conectado sin duplicar reintentos |
 | `tests/api/app.test.js` | Estado, 404, JSON roto, CORS, flujos completos (incluido uno solo con cookies, como el front) |
 | `tests/api/startup.test.js` | Sin `JWT_SECRET` no arranca; carga de datos de prueba sin duplicar |
 
@@ -672,13 +678,14 @@ Las rutas, los campos de las respuestas y el uso de cookies son **los mismos**, 
 | Datos inválidos | 422 | 400 `VALIDATION_ERROR` | Como en la clase 6. |
 | Email ya registrado | 400 | 409 `EMAIL_DUPLICATED` | 409 = "choca con algo que ya existe" (así lo usa el profe). |
 | IDs | ULID (texto) | Números autoincrementales | Como en todas las clases. |
-| Puntos con bonus | El ranking y "terminar" **no** sumaban el bonus, pero "retomar" sí | El bonus se suma **siempre** | Antes el mismo jugador tenía puntajes distintos según la pantalla. |
+| Base de datos | PostgreSQL | SQLite con Sequelize, o memoria (`PERSISTENCE_TYPE`) | En el curso usamos SQLite, y la consigna pide poder cambiar la persistencia. |
 | Estadísticas de la partida activa | Daban 0 hasta terminar | Se calculan en el momento | Era un bug. |
 | Métricas globales sin partidas | Fallaba (variable sin definir) | Devuelve `null` en las aves | Era un bug. |
 | Tabla `scores` | Guardaba el puntaje de cada partida | No existe: el puntaje queda en la partida terminada | Era el mismo dato repetido. |
-| Aviso de desconexión | No existía (el front recibía 404) | `POST /api/user-connection-log` | El front ya lo mandaba. |
+| Tiempo conectado: error en el tramo | 422 | 400 `INVALID_INTERVAL` | Como en la clase 6. |
+| Desempate en el ranking | Por id (ULID, que sigue el orden de creación) | Por aciertos y después por antigüedad | Premia al que acertó más con los mismos puntos. |
 | Documentación `/docs`, `/scalar` | Automática (FastAPI) | `requests.http` + esta guía | Express no la genera; en el curso usamos REST Client. |
-| Admin inicial | Email personal | `admin@avesba.com` (se cambia en `.env`) | No poner datos personales en el código. |
+| Admin inicial | Email personal, y admins de prueba con los mails del equipo | `admin@avesba.com` (se cambia en `.env`) | No poner datos personales en el código. |
 
 ---
 

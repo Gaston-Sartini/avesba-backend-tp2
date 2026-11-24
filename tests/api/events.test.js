@@ -36,33 +36,61 @@ describe("Eventos y notificaciones", () => {
     await esperar();
 
     assert.ok(espia.avisos.some((a) => a.subject === "Racha" && a.body.includes("3 aciertos seguidos")));
-    assert.ok(espia.avisos.some((a) => a.subject === "Partida terminada" && a.body.includes("35 puntos")));
+    assert.ok(espia.avisos.some((a) => a.subject === "Partida terminada" && a.body.includes("45 puntos")));
   });
 
-  describe("POST /api/user-connection-log (aviso del front al cerrar la pestaña)", () => {
-    it("acepta el JSON como texto plano (así lo manda sendBeacon) y responde 204", async () => {
-      const response = await api.request("POST", "/api/user-connection-log", {
-        body: JSON.stringify({ userId: 7, tiempoConectado: 125000 }),
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      });
-      assert.equal(response.status, 204);
-      await esperar();
-      assert.ok(espia.avisos.some((a) => a.subject === "Desconexión" && a.body === "El usuario 7 estuvo conectado 125 segundos"));
+  describe("POST /api/user-connection-log (tiempo conectado que manda el front)", () => {
+    const LOG = "/api/user-connection-log";
+    const yo = async () => {
+      const player = await registerPlayer(api);
+      const me = await api.get("/users/me", { token: player.token });
+      return { ...player, id: me.body.id };
+    };
+
+    it("pide estar logueado", async () => {
+      assert.equal((await api.post(LOG, { tiempoConectado: 1000 })).status, 401);
     });
 
-    it("también acepta un visitante sin usuario (userId null)", async () => {
-      const response = await api.post("/api/user-connection-log", { userId: null, tiempoConectado: 0 });
-      assert.equal(response.status, 204);
+    it("acepta el JSON como texto plano (así lo manda sendBeacon), lo guarda y avisa", async () => {
+      const player = await yo();
+      const response = await api.request("POST", LOG, {
+        body: JSON.stringify({ userId: 999, tiempoConectado: 125000 }),
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        token: player.token,
+      });
+      assert.equal(response.status, 201);
+      assert.deepEqual(response.body, { status: "ok", tiempo_conectado_ms: 125000 });
+      await esperar();
+      // El userId del cliente se ignora: el tramo es del usuario logueado
+      assert.ok(espia.avisos.some((a) => a.subject === "Desconexión" && a.body === `El usuario ${player.id} estuvo conectado 125 segundos`));
+      assert.equal((await api.daos.connectionLogsDao.getAllByUser(player.id)).length, 1);
+    });
+
+    it("un reintento del mismo tramo no se guarda dos veces, y otro tramo con el mismo registroId da 409", async () => {
+      const player = await yo();
+      const fin = Date.now();
+      const tramo = { registroId: "tramo-1", inicioMs: fin - 5000, finMs: fin, tiempoConectado: 5000 };
+      assert.equal((await api.post(LOG, tramo, { token: player.token })).status, 201);
+      assert.equal((await api.post(LOG, tramo, { token: player.token })).status, 201);
+      assert.equal((await api.daos.connectionLogsDao.getAllByUser(player.id)).length, 1);
+
+      const otro = await api.post(LOG, { ...tramo, inicioMs: fin - 4000, tiempoConectado: 4000 }, { token: player.token });
+      assert.equal(otro.status, 409);
+      assert.equal(otro.body.error.code, "REGISTRO_DUPLICATED");
     });
 
     it("con datos inválidos responde 400", async () => {
-      const response = await api.request("POST", "/api/user-connection-log", {
-        body: "esto no es json",
-        headers: { "Content-Type": "text/plain" },
-      });
-      assert.equal(response.status, 400);
-      const negativo = await api.post("/api/user-connection-log", { userId: 1, tiempoConectado: -5 });
-      assert.equal(negativo.status, 400);
+      const { token } = await yo();
+      const noJson = await api.request("POST", LOG, { body: "esto no es json", headers: { "Content-Type": "text/plain" }, token });
+      assert.equal(noJson.status, 400);
+      assert.equal((await api.post(LOG, { tiempoConectado: -5 }, { token })).status, 400);
+      assert.equal((await api.post(LOG, { tiempoConectado: 24 * 60 * 60 * 1000 + 1 }, { token })).status, 400);
+
+      const fin = Date.now();
+      const incoherente = await api.post(LOG, { registroId: "x", inicioMs: fin - 5000, finMs: fin, tiempoConectado: 1 }, { token });
+      assert.equal(incoherente.body.error.code, "INVALID_INTERVAL");
+      const incompleto = await api.post(LOG, { inicioMs: fin - 5000, tiempoConectado: 5000 }, { token });
+      assert.equal(incompleto.body.error.code, "INVALID_INTERVAL");
     });
   });
 });

@@ -5,13 +5,13 @@ import { connectionLogSchema } from "../schemas/activitySchema.js";
 
 /**
  * Factory de Router de Actividad (se monta en /api).
- * Pública: el navegador manda el aviso al cerrar la pestaña, incluso si la sesión ya venció.
+ * Necesita login: el tramo se guarda a nombre del usuario del token (la cookie viaja también con sendBeacon).
  */
-function createActivityRouter(controller) {
+function createActivityRouter(controller, { authenticate }) {
   const router = express.Router();
 
   // express.text() + parseTextJson: sendBeacon manda el JSON como texto plano
-  router.post("/user-connection-log", express.text(), parseTextJson, validate(connectionLogSchema), controller.connectionLog);
+  router.post("/user-connection-log", authenticate, express.text(), parseTextJson, validate(connectionLogSchema), controller.connectionLog);
 
   return router;
 }

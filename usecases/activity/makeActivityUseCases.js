@@ -3,9 +3,9 @@ import logConnection from "./logConnection.js";
 /**
  * Factory de Casos de Uso de Actividad.
  */
-function makeActivityUseCases({ events }) {
+function makeActivityUseCases({ connectionLogsDao, events }) {
   return {
-    logConnection: (data) => logConnection(data, { events }),
+    logConnection: (data, actor) => logConnection(data, actor, { connectionLogsDao, events }),
   };
 }
 

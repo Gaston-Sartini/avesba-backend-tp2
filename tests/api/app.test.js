@@ -52,9 +52,16 @@ describe("Aplicación", () => {
       assert.equal(response.headers.get("access-control-allow-credentials"), "true");
     });
 
+    it("acepta el front en cualquier puerto de localhost", async () => {
+      const response = await api.get("/", { headers: { Origin: "http://127.0.0.1:4173" } });
+      assert.equal(response.headers.get("access-control-allow-origin"), "http://127.0.0.1:4173");
+    });
+
     it("no habilita a orígenes desconocidos", async () => {
       const response = await api.get("/", { headers: { Origin: "http://sitio-malo.com" } });
       assert.equal(response.headers.get("access-control-allow-origin"), null);
+      const parecido = await api.get("/", { headers: { Origin: "http://localhost.sitio-malo.com" } });
+      assert.equal(parecido.headers.get("access-control-allow-origin"), null);
     });
   });
 
@@ -99,7 +106,7 @@ describe("Aplicación", () => {
       const fin = await api.post(`${JUEGO}/terminar`, undefined, { cookie });
       assert.equal(fin.status, 200);
       assert.equal(fin.body.total_aciertos, aciertos);
-      assert.equal(fin.body.puntos_totales, 100 + 5 + 15 + 50); // 10 aciertos + bonus de 3, 5 y 10
+      assert.equal(fin.body.puntos_totales, 325); // 10 + 15 + 20 + ... + 55
 
       const ranking = await api.get(`${JUEGO}/ranking`, { cookie });
       assert.equal(ranking.body.ranking[0].nombre, "Game");

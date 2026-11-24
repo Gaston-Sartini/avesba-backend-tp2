@@ -11,12 +11,14 @@ const TIMEOUT_MS = 10_000;
 const inaturalistBirdsProvider = {
   async getBirds({ place_id, locale }) {
     // taxon_id=3 son las aves. native=true: solo especies nativas del lugar.
+    // preferred_place_id=7190 (Argentina): el nombre común que se usa acá, aunque se pida otro lugar.
     const params = new URLSearchParams({
       taxon_id: "3",
       place_id: String(place_id),
       native: "true",
       quality_grade: "research",
       locale,
+      preferred_place_id: "7190",
       per_page: "100",
     });
 

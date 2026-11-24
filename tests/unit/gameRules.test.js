@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   evaluarRespuesta,
-  calcularBonusRacha,
+  calcularPuntos,
+  esRachaDestacada,
   porcentaje,
   resumirRespuestas,
   armarMensaje,
@@ -10,31 +11,34 @@ import {
 
 describe("Reglas del juego", () => {
   describe("evaluarRespuesta", () => {
-    it("una respuesta igual al nombre correcto vale 10 puntos", () => {
-      assert.deepEqual(evaluarRespuesta("Tero", "Tero"), { esCorrecta: true, puntos: 10 });
+    it("una respuesta igual al nombre correcto es correcta", () => {
+      assert.equal(evaluarRespuesta("Tero", "Tero"), true);
     });
 
     it("no importan las mayúsculas ni los espacios de más", () => {
-      assert.equal(evaluarRespuesta("  tERo ", "Tero").esCorrecta, true);
+      assert.equal(evaluarRespuesta("  tERo ", "Tero"), true);
     });
 
-    it("una respuesta distinta vale 0 puntos", () => {
-      assert.deepEqual(evaluarRespuesta("Chingolo", "Tero"), { esCorrecta: false, puntos: 0 });
+    it("una respuesta distinta es incorrecta", () => {
+      assert.equal(evaluarRespuesta("Chingolo", "Tero"), false);
     });
   });
 
-  describe("calcularBonusRacha", () => {
-    it("da bonus a los 3, 5 y 10 o más aciertos seguidos", () => {
-      assert.equal(calcularBonusRacha(3), 5);
-      assert.equal(calcularBonusRacha(5), 15);
-      assert.equal(calcularBonusRacha(10), 50);
-      assert.equal(calcularBonusRacha(12), 50);
+  describe("calcularPuntos", () => {
+    it("una correcta vale 10 y cada acierto seguido suma 5 más (igual que el front)", () => {
+      assert.deepEqual([1, 2, 3, 4, 5].map((racha) => calcularPuntos(true, racha)), [10, 15, 20, 25, 30]);
+      assert.equal(calcularPuntos(true, 10), 55);
     });
 
-    it("no da bonus en el resto de las rachas", () => {
-      for (const racha of [0, 1, 2, 4, 6, 7, 8, 9]) {
-        assert.equal(calcularBonusRacha(racha), 0, `racha ${racha}`);
-      }
+    it("una incorrecta vale 0", () => {
+      assert.equal(calcularPuntos(false, 0), 0);
+    });
+  });
+
+  describe("esRachaDestacada", () => {
+    it("avisa a los 3, 5 y 10 o más aciertos seguidos", () => {
+      assert.deepEqual([3, 5, 10, 12].map(esRachaDestacada), [true, true, true, true]);
+      assert.deepEqual([0, 1, 2, 4, 6, 9].map(esRachaDestacada), [false, false, false, false, false, false]);
     });
   });
 
@@ -50,7 +54,7 @@ describe("Reglas del juego", () => {
   });
 
   describe("resumirRespuestas", () => {
-    it("suma puntos base y bonus, y cuenta intentos y aciertos", () => {
+    it("suma puntos y bonus (el de las respuestas viejas), y cuenta intentos y aciertos", () => {
       const respuestas = [
         { es_correcta: true, puntos_obtenidos: 10, bonus_racha: 0 },
         { es_correcta: true, puntos_obtenidos: 10, bonus_racha: 0 },
@@ -77,14 +81,8 @@ describe("Reglas del juego", () => {
 
   describe("armarMensaje", () => {
     it("avisa si fue correcta o incorrecta", () => {
-      assert.equal(armarMensaje(true, 1, 0), "¡Correcto! ✓");
-      assert.equal(armarMensaje(false, 0, 0), "Incorrecto. ✗");
-    });
-
-    it("agrega el bonus de racha al mensaje", () => {
-      assert.match(armarMensaje(true, 3, 5), /Racha de 3! \+5 pts/);
-      assert.match(armarMensaje(true, 5, 15), /Racha de 5! \+15 pts/);
-      assert.match(armarMensaje(true, 10, 50), /RACHA ÉPICA! \+50 pts/);
+      assert.equal(armarMensaje(true), "¡Correcto! ✓");
+      assert.equal(armarMensaje(false), "Incorrecto. ✗");
     });
   });
 });

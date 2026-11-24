@@ -25,19 +25,23 @@ async function createDaos(persistence) {
     const { default: UsersSequelizeDao } = await import("../dao/users/UsersSequelizeDao.js");
     const { default: GameSessionsSequelizeDao } = await import("../dao/gameSessions/GameSessionsSequelizeDao.js");
     const { default: GameResultsSequelizeDao } = await import("../dao/gameResults/GameResultsSequelizeDao.js");
+    const { default: ConnectionLogsSequelizeDao } = await import("../dao/connectionLogs/ConnectionLogsSequelizeDao.js");
     return {
       usersDao: new UsersSequelizeDao(),
       gameSessionsDao: new GameSessionsSequelizeDao(),
       gameResultsDao: new GameResultsSequelizeDao(),
+      connectionLogsDao: new ConnectionLogsSequelizeDao(),
     };
   }
   const { default: UsersMemoryDao } = await import("../dao/users/UsersMemoryDao.js");
   const { default: GameSessionsMemoryDao } = await import("../dao/gameSessions/GameSessionsMemoryDao.js");
   const { default: GameResultsMemoryDao } = await import("../dao/gameResults/GameResultsMemoryDao.js");
+  const { default: ConnectionLogsMemoryDao } = await import("../dao/connectionLogs/ConnectionLogsMemoryDao.js");
   return {
     usersDao: new UsersMemoryDao(),
     gameSessionsDao: new GameSessionsMemoryDao(),
     gameResultsDao: new GameResultsMemoryDao(),
+    connectionLogsDao: new ConnectionLogsMemoryDao(),
   };
 }
 

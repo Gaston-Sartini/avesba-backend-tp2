@@ -175,7 +175,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.body.error.code, "VALIDATION_ERROR");
       });
 
-      it("da bonus de racha a los 3 y 5 aciertos seguidos, y la racha se corta con un error", async () => {
+      it("cada acierto seguido vale 5 puntos más, y la racha se corta con un error", async () => {
         const { token } = await nuevoJugador();
         await iniciar(token);
         const preguntas = await lote(token);
@@ -184,21 +184,23 @@ for (const persistence of PERSISTENCES) {
         for (const pregunta of preguntas.slice(0, 5)) {
           puntos.push((await responder(token, pregunta, pregunta.nombre)).body.puntos_obtenidos);
         }
-        assert.deepEqual(puntos, [10, 10, 15, 10, 25]); // 3ra: 10+5, 5ta: 10+15
+        assert.deepEqual(puntos, [10, 15, 20, 25, 30]);
 
         const error = await responder(token, preguntas[5], nombreIncorrecto(preguntas[5]));
         assert.equal(error.body.puntos_obtenidos, 0);
         const sesion = await api.get(`${JUEGO}/sesion`, { token });
         assert.equal(sesion.body.streak_actual, 0);
+        const otra = await responder(token, preguntas[6], preguntas[6].nombre);
+        assert.equal(otra.body.puntos_obtenidos, 10); // la racha volvió a empezar
       });
 
-      it("10 aciertos seguidos dan el bonus épico de 50", async () => {
+      it("10 aciertos seguidos: la última vale 55 y la partida, 325", async () => {
         const { token } = await nuevoJugador();
         await iniciar(token);
         let ultima;
         for (const pregunta of await lote(token)) ultima = await responder(token, pregunta, pregunta.nombre);
-        assert.equal(ultima.body.puntos_obtenidos, 60);
-        assert.match(ultima.body.mensaje, /RACHA ÉPICA/);
+        assert.equal(ultima.body.puntos_obtenidos, 55);
+        assert.equal((await api.get(`${JUEGO}/sesion`, { token })).body.puntos_totales, 325);
       });
     });
 
@@ -281,7 +283,7 @@ for (const persistence of PERSISTENCES) {
         assert.equal(response.status, 200);
         assert.deepEqual(response.body, {
           session_id: sessionId,
-          puntos_totales: 35, // 10 + 10 + (10 + 5 de racha)
+          puntos_totales: 45, // 10 + 15 + 20
           total_intentos: 4,
           total_aciertos: 3,
           porcentaje_acierto: 75,
@@ -290,7 +292,7 @@ for (const persistence of PERSISTENCES) {
 
         const session = await api.daos.gameSessionsDao.getById(sessionId);
         assert.equal(session.estado, "terminada");
-        assert.equal(session.puntos_totales, 35);
+        assert.equal(session.puntos_totales, 45);
         assert.equal(typeof session.terminadaAt, "number");
         assert.equal((await api.get(`${JUEGO}/sesion`, { token })).status, 404);
       });
@@ -306,17 +308,62 @@ for (const persistence of PERSISTENCES) {
         const response = await api.get(`${JUEGO}/ranking?limit=10`, { token });
         assert.equal(response.status, 200);
         assert.ok(Array.isArray(response.body.ranking));
-        assert.equal(response.body.total_jugadores, response.body.ranking.length);
         const puntos = response.body.ranking.map((j) => j.puntos_totales);
         assert.deepEqual(puntos, [...puntos].sort((a, b) => b - a));
+        assert.deepEqual(
+          response.body.ranking.map((j) => j.posicion),
+          response.body.ranking.map((_, i) => i + 1)
+        );
         for (const jugador of response.body.ranking) {
-          assert.deepEqual(Object.keys(jugador).sort(), ["aciertos", "apellido", "fallos", "nombre", "puntos_totales", "user_id"]);
+          assert.deepEqual(Object.keys(jugador).sort(), ["aciertos", "apellido", "fallos", "nombre", "posicion", "puntos_totales", "user_id"]);
         }
+      });
+
+      it("solo cuenta a los que tienen puntos y devuelve la fila del jugador logueado", async () => {
+        const sinPuntos = await nuevoJugador();
+        const conPuntos = await nuevoJugador();
+        await iniciar(conPuntos.token);
+        const [pregunta] = await lote(conPuntos.token);
+        await responder(conPuntos.token, pregunta, pregunta.nombre);
+
+        const response = await api.get(`${JUEGO}/ranking`, { token: sinPuntos.token });
+        assert.ok(response.body.ranking.every((j) => j.puntos_totales > 0));
+        assert.equal(response.body.total_jugadores, response.body.ranking.length);
+        assert.equal(response.body.jugador_actual.puntos_totales, 0);
+        assert.equal(response.body.jugador_actual.posicion, null);
+
+        const mio = (await api.get(`${JUEGO}/ranking`, { token: conPuntos.token })).body.jugador_actual;
+        assert.equal(mio.puntos_totales, 10);
+        assert.equal(typeof mio.posicion, "number");
+      });
+
+      it("pagina con limit y offset, y el total no depende de la página", async () => {
+        const jugadores = [];
+        for (let i = 0; i < 3; i++) {
+          const jugador = await nuevoJugador();
+          await iniciar(jugador.token);
+          const [pregunta] = await lote(jugador.token);
+          await responder(jugador.token, pregunta, pregunta.nombre);
+          jugadores.push(jugador);
+        }
+        const { token } = jugadores[0];
+        const completo = (await api.get(`${JUEGO}/ranking?limit=100`, { token })).body;
+        const pagina2 = (await api.get(`${JUEGO}/ranking?limit=1&offset=1`, { token })).body;
+
+        assert.equal(pagina2.total_jugadores, completo.total_jugadores);
+        assert.deepEqual(pagina2.ranking, completo.ranking.slice(1, 2));
+        assert.equal(pagina2.ranking[0].posicion, 2);
+        assert.equal((await api.get(`${JUEGO}/ranking?offset=-1`, { token })).status, 400);
       });
 
       it("respeta el límite y valida que esté entre 1 y 100", async () => {
         const { token } = await nuevoJugador();
-        await nuevoJugador();
+        for (let i = 0; i < 2; i++) {
+          const otro = await nuevoJugador();
+          await iniciar(otro.token);
+          const [pregunta] = await lote(otro.token);
+          await responder(otro.token, pregunta, pregunta.nombre);
+        }
         assert.equal((await api.get(`${JUEGO}/ranking?limit=1`, { token })).body.ranking.length, 1);
         assert.equal((await api.get(`${JUEGO}/ranking?limit=0`, { token })).status, 400);
         assert.equal((await api.get(`${JUEGO}/ranking?limit=101`, { token })).status, 400);
