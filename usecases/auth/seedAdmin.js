@@ -1,5 +1,3 @@
-// usecases/auth/seedAdmin.js
-
 /**
  * Caso de Uso: Crear el administrador inicial.
  * Si todos los que se registran son "jugador", ¿quién crea al primer admin? Se siembra al
@@ -8,9 +6,7 @@
  */
 async function seedAdmin({ email, password }, { usersDao, hasher }) {
   if (!password) {
-    console.warn(
-      "[seed] Falta ADMIN_PASSWORD en el .env: no se creó el administrador",
-    );
+    console.warn("[seed] Falta ADMIN_PASSWORD en el .env: no se creó el administrador");
     return null;
   }
 

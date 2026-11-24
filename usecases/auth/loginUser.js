@@ -1,4 +1,3 @@
-// usecases/auth/loginUser.js
 import AppError from "../../errors/AppError.js";
 import issueTokens from "./issueTokens.js";
 
@@ -11,22 +10,14 @@ import issueTokens from "./issueTokens.js";
  *  - Un usuario inactivo (dado de baja) no puede entrar.
  *  - Después de varios intentos fallidos con el mismo email, se bloquea un rato (429).
  */
-async function loginUser(
-  { email, password },
-  { usersDao, hasher, tokens, loginAttempts },
-) {
+async function loginUser({ email, password }, { usersDao, hasher, tokens, loginAttempts }) {
   loginAttempts.check(email);
 
   const credentials = await usersDao.getCredentialsByEmail(email);
-  const valid =
-    credentials && (await hasher.compare(password, credentials.passwordHash));
+  const valid = credentials && (await hasher.compare(password, credentials.passwordHash));
   if (!valid) {
     loginAttempts.registerFailure(email);
-    throw new AppError(
-      "INVALID_CREDENTIALS",
-      "Email o contraseña inválidos",
-      401,
-    );
+    throw new AppError("INVALID_CREDENTIALS", "Email o contraseña inválidos", 401);
   }
 
   if (!credentials.is_active) {

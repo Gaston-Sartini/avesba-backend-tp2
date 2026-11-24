@@ -12,6 +12,7 @@ async function updateUser(id, changes, { usersDao }) {
 
   const { nombre, apellido, role, is_active } = changes;
   return usersDao.update(id, {
+    // Solo se pisan los campos que vinieron
     ...(nombre !== undefined && { nombre }),
     ...(apellido !== undefined && { apellido }),
     ...(role !== undefined && { role }),
