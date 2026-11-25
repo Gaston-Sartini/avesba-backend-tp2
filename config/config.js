@@ -23,6 +23,7 @@ const DB_STORAGE = process.env.DB_STORAGE || "./database.sqlite"; // ":memory:" 
 
 // --- Eventos y notificaciones (clase 10) ---
 const NOTIFIER_TYPE = process.env.NOTIFIER_TYPE || "console"; // "console", "file" o "none"
+const NOTIFICATIONS_LOG_PATH = process.env.NOTIFICATIONS_LOG_PATH || "notifications.log"; // archivo del notificador "file"
 
 // --- Aves (clase 12: API externa) ---
 const BIRDS_PROVIDER = process.env.BIRDS_PROVIDER || "inaturalist"; // "inaturalist" o "fake" (sin internet)
@@ -60,6 +61,7 @@ export {
   PERSISTENCE_TYPE,
   DB_STORAGE,
   NOTIFIER_TYPE,
+  NOTIFICATIONS_LOG_PATH,
   BIRDS_PROVIDER,
   JWT_SECRET,
   ACCESS_TOKEN_EXPIRE_MINUTES,

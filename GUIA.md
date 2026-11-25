@@ -106,6 +106,7 @@ Servidor AvesBA corriendo en http://localhost:8000
 | `PERSISTENCE_TYPE` | `sequelize` / `memory` | Guardar en SQLite (queda en disco) o en memoria (se borra al reiniciar). |
 | `BIRDS_PROVIDER` | `inaturalist` / `fake` | Aves reales de internet, o 15 aves inventadas para trabajar sin conexión. |
 | `NOTIFIER_TYPE` | `console` / `file` / `none` | Dónde van los avisos de los eventos: consola, `notifications.log` o ninguno. |
+| `NOTIFICATIONS_LOG_PATH` | `notifications.log` | El archivo donde escribe el notificador de archivo. |
 | `JWT_SECRET` | texto largo | **Obligatorio.** Con esto se firman los tokens. Sin él, la app no arranca. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 15 | Cuánto dura el token de acceso. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | Cuánto dura el token para renovar. |
