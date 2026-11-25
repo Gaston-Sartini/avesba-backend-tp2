@@ -10,7 +10,7 @@ import issueTokens from "./issueTokens.js";
  *  - Un usuario inactivo (dado de baja) no puede entrar.
  *  - Después de varios intentos fallidos con el mismo email, se bloquea un rato (429).
  */
-async function loginUser({ email, password }, { usersDao, hasher, tokens, loginAttempts }) {
+async function loginUser({ email, password }, { usersDao, hasher, tokens, loginAttempts, clock }) {
   loginAttempts.check(email);
 
   const credentials = await usersDao.getCredentialsByEmail(email);
@@ -25,7 +25,7 @@ async function loginUser({ email, password }, { usersDao, hasher, tokens, loginA
   }
 
   loginAttempts.clear(email);
-  const user = await usersDao.update(credentials.id, { lastLogin: Date.now() });
+  const user = await usersDao.update(credentials.id, { lastLogin: clock.now() });
 
   return issueTokens(user, tokens);
 }

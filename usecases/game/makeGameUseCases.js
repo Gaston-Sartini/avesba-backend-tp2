@@ -8,10 +8,10 @@ import getRanking from "./getRanking.js";
 
 /**
  * Factory de Casos de Uso del Juego.
- * Necesita los DAOs de usuarios, partidas y respuestas, el proveedor de aves y el bus de eventos.
+ * Necesita los DAOs de usuarios, partidas y respuestas, el proveedor de aves, el bus de eventos y el reloj.
  */
-function makeGameUseCases({ usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events }) {
-  const deps = { usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events };
+function makeGameUseCases({ usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events, clock }) {
+  const deps = { usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events, clock };
 
   return {
     startGame: (options, actor) => startGame(options, actor, deps),

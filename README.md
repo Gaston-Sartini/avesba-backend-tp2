@@ -13,7 +13,7 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 | 📖 **Documentación de la API (Swagger)** | `http://localhost:8000/api-docs`, con el servidor levantado |
 | 🧭 **Guía del código**, archivo por archivo | [GUIA.md](GUIA.md) |
 | 🧪 **Pruebas a mano** | [requests.http](requests.http) (extensión REST Client de VS Code) |
-| ✅ **Tests automáticos** | `npm test`: 306 tests |
+| ✅ **Tests automáticos** | `npm test`: 324 tests |
 
 ---
 
@@ -36,7 +36,8 @@ Tiene persistencia intercambiable (memoria ↔ SQLite), un contenedor que inyect
 15. [Manejo de errores](#15-manejo-de-errores)
 16. [Tests](#16-tests)
 17. [Cosas a tener en cuenta](#17-cosas-a-tener-en-cuenta)
-18. [Cumplimiento de la consigna](#18-cumplimiento-de-la-consigna)
+18. [Limitaciones conocidas](#18-limitaciones-conocidas)
+19. [Cumplimiento de la consigna](#19-cumplimiento-de-la-consigna)
 
 ---
 
@@ -179,7 +180,7 @@ Todas viven en los **casos de uso** (`usecases/`), no en las rutas ni en los con
 
 ## 5. Requisitos previos
 
-- **Node.js 22 o superior.** Verificalo con `node --version`.
+- **Node.js 22 o superior** (lo declara `engines` en `package.json`). Verificalo con `node --version`.
 - **npm**, que viene con Node.
 - **Internet**, para traer las aves de iNaturalist. Para trabajar sin conexión, ver [Cosas a tener en cuenta](#17-cosas-a-tener-en-cuenta).
 - Opcional: **VS Code** con la extensión **REST Client**.
@@ -264,6 +265,8 @@ Se leen **solamente** en `config/config.js`. El `.env` **no se sube a Git**; `.e
 | **`PERSISTENCE_TYPE`** | `memory` | **`memory`** (array de JS, se borra al reiniciar) o **`sequelize`** (SQLite) |
 | `DB_STORAGE` | `./database.sqlite` | Archivo de la base (`:memory:` = base en memoria) |
 | `NOTIFIER_TYPE` | `console` | Dónde van los avisos de los eventos: `console`, `file` (`notifications.log`) o `none` |
+| `NOTIFICATIONS_LOG_PATH` | `notifications.log` | El archivo donde escribe el notificador `file` |
+| `CLOCK_NOW` | (vacío) | Vacío = la hora real. Con una fecha ISO (`2026-12-01T12:00:00Z`) la app usa siempre esa hora: sirve para probar a mano |
 | `BIRDS_PROVIDER` | `inaturalist` | `inaturalist` (real, necesita internet) o `fake` (15 aves de prueba, sin internet) |
 | **`JWT_SECRET`** | *(ninguno)* | **Obligatorio.** Secreto para firmar los tokens. Si falta, la app no arranca. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | Cuánto dura el token de acceso |
@@ -411,7 +414,8 @@ caso de uso ──emit("game.finished")──▶ bus (EventEmitter) ──▶ li
 │   ├── models/           Modelos de Sequelize y sus relaciones (index.js)
 │   ├── users/            UsersMemoryDao + UsersSequelizeDao
 │   ├── gameSessions/     Partidas (memoria + Sequelize)
-│   └── gameResults/      Respuestas (memoria + Sequelize)
+│   ├── gameResults/      Respuestas (memoria + Sequelize)
+│   └── connectionLogs/   Tiempo conectado (memoria + Sequelize)
 ├── connection/           Conexión a SQLite
 ├── schemas/              Validaciones con Zod
 ├── middlewares/          logger, auth, validate, notFound, errorHandler, parseTextJson
@@ -421,8 +425,9 @@ caso de uso ──emit("game.finished")──▶ bus (EventEmitter) ──▶ li
 ├── alerts/               Listeners de los eventos
 ├── notifications/        Notificadores (consola, archivo, silencioso)
 ├── birds/                Proveedor de aves (iNaturalist o falso) y nombres argentinos
+├── utils/                El reloj inyectable (clock.js)
 ├── docs/                 openapi.yaml + Swagger UI
-└── tests/                Tests automáticos (unit/ y api/)
+└── tests/                Tests automáticos (unit/, usecases/ y api/)
 ```
 
 ---
@@ -485,8 +490,9 @@ Los errores esperados se lanzan con **`AppError`** (`errors/AppError.js`), que t
 npm test
 ```
 
-- **306 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
+- **324 tests**, en unos 10 segundos, con el runner que viene con Node (`node:test`).
 - **No necesitan internet ni tocan tu base:** usan SQLite en memoria y un proveedor de aves falso.
+- **Tests de casos de uso** (`tests/usecases/`): cada caso de uso solo, sin servidor ni base, con los **DAO en memoria como doble**, un **reloj fijo** y un bus de eventos espía. Cada regla con su caso feliz, el borde, la violación y que el estado no cambió.
 - **Tests unitarios** (`tests/unit/`): reglas del juego, armado de preguntas, ranking, seguridad, y el **contrato de los DAOs** (los de memoria y los de SQLite tienen que comportarse igual).
 - **Tests de la API** (`tests/api/`): cada endpoint con sus casos de éxito y de error, **corridos en los dos modos de persistencia**. También verifican eventos, CORS, el arranque y que Swagger documente todas las rutas.
 
@@ -506,7 +512,19 @@ npm test
 
 ---
 
-## 18. Cumplimiento de la consigna
+## 18. Limitaciones conocidas
+
+Lo que el proyecto **no** resuelve, a sabiendas. Está bien para un juego de un curso, pero en un sistema real habría que encararlo.
+
+- 🔐 **Un token sigue valiendo hasta que vence.** El JWT no tiene estado: si se borra un usuario o se le cambia el rol, su token anterior sirve hasta 15 minutos más. Se mitiga con la duración corta del access token (`ACCESS_TOKEN_EXPIRE_MINUTES`).
+- 🚦 **El bloqueo de login vive en memoria** (`security/loginAttempts.js`). Se pierde al reiniciar, y con varias copias del servidor cada una llevaría su propia cuenta.
+- 🏗️ **No hay migraciones.** `sync()` crea las tablas que faltan, pero no modifica las que ya existen. Si cambia un modelo, hay que borrar `database.sqlite`.
+- 🏁 **Reglas de "revisar y después guardar" con pedidos simultáneos.** Por ejemplo, el email repetido: el caso de uso pregunta si existe y después crea. Dos registros al mismo instante con el mismo email podrían pasar los dos la revisión. En SQLite lo frena el índice único de la tabla; en memoria, no. Lo mismo vale para "una sola partida activa por jugador".
+- 📊 **El ranking se calcula en cada pedido** con todas las respuestas. Anda bien con cientos de jugadores; con muchos más convendría calcularlo en la base o guardarlo.
+
+---
+
+## 19. Cumplimiento de la consigna
 
 | Requisito | Dónde está |
 |---|---|
@@ -531,5 +549,5 @@ npm test
 | README | Este archivo |
 | **Opcional:** filtros, orden y paginación | `GET /partidas?estado=&sort=&page=`, `GET /users?role=&page=` |
 | **Opcional:** segundo evento con notificador adicional | 4 eventos; notificadores de consola y archivo |
-| **Opcional:** tests de los casos de uso | `tests/` (306 tests, con el DAO en memoria como doble) |
+| **Opcional:** tests de los casos de uso | `tests/usecases/` (con el DAO en memoria como doble y el reloj fijo), más `tests/unit/` y `tests/api/`: 324 tests |
 | **Opcional:** seguridad (hash y JWT) | `security/`, `middlewares/auth.js` |

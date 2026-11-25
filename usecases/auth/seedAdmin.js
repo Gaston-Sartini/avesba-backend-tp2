@@ -4,7 +4,7 @@
  * arrancar, con el email y la contraseña del .env (ADMIN_EMAIL, ADMIN_PASSWORD).
  * Si ya existe no hace nada; si falta la contraseña, avisa y no crea nada.
  */
-async function seedAdmin({ email, password }, { usersDao, hasher }) {
+async function seedAdmin({ email, password }, { usersDao, hasher, clock }) {
   if (!password) {
     console.warn("[seed] Falta ADMIN_PASSWORD en el .env: no se creó el administrador");
     return null;
@@ -13,7 +13,7 @@ async function seedAdmin({ email, password }, { usersDao, hasher }) {
   const existing = await usersDao.getByEmail(email);
   if (existing) return existing;
 
-  const now = Date.now();
+  const now = clock.now();
   return usersDao.save({
     nombre: "Admin",
     apellido: "Admin",

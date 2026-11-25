@@ -106,6 +106,8 @@ Servidor AvesBA corriendo en http://localhost:8000
 | `PERSISTENCE_TYPE` | `sequelize` / `memory` | Guardar en SQLite (queda en disco) o en memoria (se borra al reiniciar). |
 | `BIRDS_PROVIDER` | `inaturalist` / `fake` | Aves reales de internet, o 15 aves inventadas para trabajar sin conexión. |
 | `NOTIFIER_TYPE` | `console` / `file` / `none` | Dónde van los avisos de los eventos: consola, `notifications.log` o ninguno. |
+| `NOTIFICATIONS_LOG_PATH` | `notifications.log` | El archivo donde escribe el notificador de archivo. |
+| `CLOCK_NOW` | vacío / fecha ISO | Vacío = la hora real. Con una fecha, la app usa siempre esa hora ("viajar en el tiempo" para probar). |
 | `JWT_SECRET` | texto largo | **Obligatorio.** Con esto se firman los tokens. Sin él, la app no arranca. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 15 | Cuánto dura el token de acceso. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | Cuánto dura el token para renovar. |
@@ -239,6 +241,7 @@ BackendNode/
 ├── alerts/               Qué hacer cuando pasa cada evento
 ├── notifications/        Por dónde avisar: consola, archivo o nada
 ├── errors/               AppError: el error "esperado" de la app
+├── utils/                El reloj inyectable (clock.js): los casos de uso no leen la hora por su cuenta
 ├── docs/                 openapi.yaml (la documentación) y Swagger UI en /api-docs
 │
 └── tests/                Tests automáticos (npm test)
@@ -635,10 +638,11 @@ El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya 
 npm test
 ```
 
-Corre **306 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
+Corre **324 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
 
 | Archivo | Qué prueba |
 |---|---|
+| `tests/usecases/` | **Los casos de uso solos**, sin servidor ni base: con los DAO en memoria como doble, un reloj fijo y un bus espía. Cada regla con su caso feliz, el borde, la violación y que el estado no cambió (`answerQuestion`, `logConnection`, `createUser`, `deleteUser`). |
 | `tests/unit/gameRules.test.js` | Puntos por racha, rachas destacadas, porcentajes y mensajes |
 | `tests/unit/buildQuestions.test.js` | Lote de 10 preguntas distintas, 4 opciones con la correcta, error si faltan aves |
 | `tests/unit/buildRanking.test.js` | Orden y desempates del ranking |

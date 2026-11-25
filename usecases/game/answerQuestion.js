@@ -14,7 +14,7 @@ import { evaluarRespuesta, calcularPuntos, esRachaDestacada, armarMensaje } from
  *     10, 15, 20, 25... (ver calcularPuntos).
  * Efecto secundario desacoplado: a los 3, 5 y 10+ aciertos seguidos emite "game.streakAchieved".
  */
-async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessionsDao, gameResultsDao, events }) {
+async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessionsDao, gameResultsDao, events, clock }) {
   const session = await gameSessionsDao.getActiveByUser(actor.id);
   if (!session) {
     throw new AppError("NO_ACTIVE_SESSION", "No hay una sesión activa. Iniciá una con POST /juego/iniciar", 404);
@@ -51,7 +51,7 @@ async function answerQuestion({ ave_id, respuesta_usuario }, actor, { gameSessio
     puntos_obtenidos: puntos,
     bonus_racha: 0, // la racha ya está incluida en los puntos
     streak_en_respuesta: racha,
-    createdAt: Date.now(),
+    createdAt: clock.now(),
   });
 
   await gameSessionsDao.update(session.id, { streak_actual: racha, streak_maximo: rachaMaxima });

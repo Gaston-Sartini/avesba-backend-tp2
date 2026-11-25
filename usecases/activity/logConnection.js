@@ -13,11 +13,11 @@ const TOLERANCIA_RELOJ_MS = 60 * 1000;
  *    Si existe con OTRO tramo, es un error (409).
  * Efecto secundario desacoplado: emite "user.disconnected".
  */
-async function logConnection({ tiempoConectado, inicioMs, finMs, registroId }, actor, { connectionLogsDao, events }) {
+async function logConnection({ tiempoConectado, inicioMs, finMs, registroId }, actor, { connectionLogsDao, events, clock }) {
   const conTramo = [inicioMs, finMs, registroId].some((valor) => valor !== undefined);
   if (conTramo) {
     const completo = inicioMs !== undefined && finMs !== undefined && registroId !== undefined;
-    if (!completo || finMs - inicioMs !== tiempoConectado || finMs > Date.now() + TOLERANCIA_RELOJ_MS) {
+    if (!completo || finMs - inicioMs !== tiempoConectado || finMs > clock.now() + TOLERANCIA_RELOJ_MS) {
       throw new AppError("INVALID_INTERVAL", "Intervalo de conexión inválido", 400);
     }
 
@@ -37,7 +37,7 @@ async function logConnection({ tiempoConectado, inicioMs, finMs, registroId }, a
     inicio_ms: inicioMs ?? null,
     fin_ms: finMs ?? null,
     tiempo_conectado_ms: tiempoConectado,
-    createdAt: Date.now(),
+    createdAt: clock.now(),
   });
 
   events.emit(EVENTS.USER_DISCONNECTED, { userId: actor.id, tiempoConectado });
