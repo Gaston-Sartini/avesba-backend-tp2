@@ -241,6 +241,7 @@ BackendNode/
 ├── alerts/               Qué hacer cuando pasa cada evento
 ├── notifications/        Por dónde avisar: consola, archivo o nada
 ├── errors/               AppError: el error "esperado" de la app
+├── utils/                El reloj inyectable (clock.js): los casos de uso no leen la hora por su cuenta
 ├── docs/                 openapi.yaml (la documentación) y Swagger UI en /api-docs
 │
 └── tests/                Tests automáticos (npm test)
@@ -637,7 +638,7 @@ El campo `bonus_racha` sigue existiendo, pero ahora siempre vale 0: la racha ya 
 npm test
 ```
 
-Corre **306 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
+Corre **324 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `database.sqlite`**: los tests usan SQLite en memoria y el proveedor de aves falso. Usan el runner que viene con Node (`node:test`), así que no hay que instalar nada.
 
 | Archivo | Qué prueba |
 |---|---|

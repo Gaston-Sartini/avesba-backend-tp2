@@ -4,6 +4,9 @@
   "description": "API REST de AvesBA — juego de aves con Arquitectura en Capas, persistencia intercambiable (memoria / Sequelize + SQLite), eventos y JWT",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node --env-file=.env index.js",
     "dev": "node --env-file=.env --watch index.js",
