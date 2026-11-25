@@ -265,6 +265,7 @@ Se leen **solamente** en `config/config.js`. El `.env` **no se sube a Git**; `.e
 | `DB_STORAGE` | `./database.sqlite` | Archivo de la base (`:memory:` = base en memoria) |
 | `NOTIFIER_TYPE` | `console` | Dónde van los avisos de los eventos: `console`, `file` (`notifications.log`) o `none` |
 | `NOTIFICATIONS_LOG_PATH` | `notifications.log` | El archivo donde escribe el notificador `file` |
+| `CLOCK_NOW` | (vacío) | Vacío = la hora real. Con una fecha ISO (`2026-12-01T12:00:00Z`) la app usa siempre esa hora: sirve para probar a mano |
 | `BIRDS_PROVIDER` | `inaturalist` | `inaturalist` (real, necesita internet) o `fake` (15 aves de prueba, sin internet) |
 | **`JWT_SECRET`** | *(ninguno)* | **Obligatorio.** Secreto para firmar los tokens. Si falta, la app no arranca. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | Cuánto dura el token de acceso |

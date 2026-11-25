@@ -5,7 +5,7 @@ import AppError from "../../errors/AppError.js";
  * Regla de negocio: hay que mandar la contraseña ACTUAL correcta además de la nueva.
  * Así, si alguien encuentra la sesión abierta, no puede cambiar la contraseña y quedarse con la cuenta.
  */
-async function changePassword(actor, { current_password, new_password }, { usersDao, hasher }) {
+async function changePassword(actor, { current_password, new_password }, { usersDao, hasher, clock }) {
   const user = await usersDao.getById(actor.id);
   if (!user) {
     throw new AppError("USER_NOT_FOUND", `Usuario ${actor.id} no encontrado`, 404);
@@ -18,7 +18,7 @@ async function changePassword(actor, { current_password, new_password }, { users
     throw new AppError("WRONG_PASSWORD", "La contraseña actual es incorrecta", 400);
   }
 
-  await usersDao.update(actor.id, { passwordHash: await hasher.hash(new_password), updatedAt: Date.now() });
+  await usersDao.update(actor.id, { passwordHash: await hasher.hash(new_password), updatedAt: clock.now() });
 
   return { message: "Contraseña actualizada exitosamente" };
 }

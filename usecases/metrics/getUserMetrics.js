@@ -9,7 +9,7 @@ import { resumirTiempoConectado } from "./connectionTime.js";
  * y su posición en el ranking general
  * (`null` si todavía no sumó puntos: el ranking solo incluye a quienes tienen puntos).
  */
-async function getUserMetrics(actor, { usersDao, gameResultsDao, connectionLogsDao }) {
+async function getUserMetrics(actor, { usersDao, gameResultsDao, connectionLogsDao, clock }) {
   const user = await usersDao.getById(actor.id);
   if (!user) {
     throw new AppError("USER_NOT_FOUND", `Usuario ${actor.id} no encontrado`, 404);
@@ -23,7 +23,7 @@ async function getUserMetrics(actor, { usersDao, gameResultsDao, connectionLogsD
   const ranking = buildRanking(await usersDao.getAll(), todas);
   const posicion = ranking.find((jugador) => jugador.user_id === user.id)?.posicion ?? null;
 
-  const tiempo = resumirTiempoConectado(await connectionLogsDao.getAllByUser(user.id));
+  const tiempo = resumirTiempoConectado(await connectionLogsDao.getAllByUser(user.id), clock.now());
 
   return {
     user_id: user.id,

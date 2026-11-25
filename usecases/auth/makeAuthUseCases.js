@@ -7,10 +7,10 @@ import refreshSession from "./refreshSession.js";
  * Recibe todas las dependencias juntas y devuelve los casos de uso "preconectados":
  * el controlador los llama solo con los datos del pedido.
  */
-function makeAuthUseCases({ usersDao, hasher, tokens, loginAttempts, events }) {
+function makeAuthUseCases({ usersDao, hasher, tokens, loginAttempts, events, clock }) {
   return {
-    register: (data) => registerUser(data, { usersDao, hasher, tokens, events }),
-    login: (credentials) => loginUser(credentials, { usersDao, hasher, tokens, loginAttempts }),
+    register: (data) => registerUser(data, { usersDao, hasher, tokens, events, clock }),
+    login: (credentials) => loginUser(credentials, { usersDao, hasher, tokens, loginAttempts, clock }),
     refresh: (refreshToken) => refreshSession(refreshToken, { usersDao, tokens }),
   };
 }

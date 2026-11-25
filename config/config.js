@@ -28,6 +28,9 @@ const NOTIFICATIONS_LOG_PATH = process.env.NOTIFICATIONS_LOG_PATH || "notificati
 // --- Aves (clase 12: API externa) ---
 const BIRDS_PROVIDER = process.env.BIRDS_PROVIDER || "inaturalist"; // "inaturalist" o "fake" (sin internet)
 
+// --- Reloj (clase 13): vacío = la hora real; una fecha ISO la deja fija (sirve para probar a mano) ---
+const CLOCK_NOW = process.env.CLOCK_NOW || null;
+
 // --- Seguridad (clase 11) ---
 // El secreto NO tiene valor por defecto: si alguien olvida configurarlo en producción,
 // la app firmaría tokens con un secreto conocido por todos y cualquiera podría fabricarse
@@ -63,6 +66,7 @@ export {
   NOTIFIER_TYPE,
   NOTIFICATIONS_LOG_PATH,
   BIRDS_PROVIDER,
+  CLOCK_NOW,
   JWT_SECRET,
   ACCESS_TOKEN_EXPIRE_MINUTES,
   REFRESH_TOKEN_EXPIRE_DAYS,

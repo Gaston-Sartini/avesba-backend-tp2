@@ -12,7 +12,9 @@ import {
   ADMIN_PASSWORD,
   SEED_PLAYERS,
   SEED_PLAYERS_PASSWORD,
+  CLOCK_NOW,
 } from "../config/config.js";
+import createClock from "../utils/clock.js";
 
 // Persistencia, aves y notificaciones (cada una con su factory)
 import { getUsersDao, getGameSessionsDao, getGameResultsDao, getConnectionLogsDao } from "../dao/daoFactory.js";
@@ -82,6 +84,10 @@ async function buildContainer(overrides = {}) {
   const events = createEventBus();
   registerAlertListeners(events, overrides.notifier ?? getNotifier());
 
+  // Reloj: la hora es un dato externo, como la base. Los casos de uso la reciben y nunca llaman a Date.now()
+  const clock = overrides.clock ?? createClock({ fixedNow: CLOCK_NOW });
+  if (CLOCK_NOW) console.log(`[Reloj] Fijo en ${CLOCK_NOW}`);
+
   // 4. Seguridad
   const hasher = createPasswordHasher({ rounds: BCRYPT_ROUNDS });
   const tokens = createTokenService({
@@ -93,10 +99,10 @@ async function buildContainer(overrides = {}) {
   const auth = createAuthMiddlewares(tokens);
 
   // 5. Datos iniciales: DESPUÉS de init(), porque en Sequelize las tablas se crean ahí
-  await seedAdmin({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { usersDao, hasher });
+  await seedAdmin({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }, { usersDao, hasher, clock });
   await seedPlayers(
     { cantidad: SEED_PLAYERS, password: SEED_PLAYERS_PASSWORD },
-    { usersDao, gameSessionsDao, gameResultsDao, hasher }
+    { usersDao, gameSessionsDao, gameResultsDao, hasher, clock }
   );
 
   // 6. Casos de uso → Controladores → Routers
@@ -104,28 +110,28 @@ async function buildContainer(overrides = {}) {
 
   router.use("/", createHealthRouter(new HealthController({ appName: APP_NAME, version: APP_VERSION })));
 
-  const authController = new AuthController(makeAuthUseCases({ usersDao, hasher, tokens, loginAttempts, events }));
+  const authController = new AuthController(makeAuthUseCases({ usersDao, hasher, tokens, loginAttempts, events, clock }));
   router.use("/auth", createAuthRouter(authController));
 
   const usersController = new UsersController(
-    makeUserUseCases({ usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao, hasher, events })
+    makeUserUseCases({ usersDao, gameSessionsDao, gameResultsDao, connectionLogsDao, hasher, events, clock })
   );
   router.use("/users", createUsersRouter(usersController, auth));
 
   const gameController = new GameController(
-    makeGameUseCases({ usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events })
+    makeGameUseCases({ usersDao, gameSessionsDao, gameResultsDao, birdsProvider, events, clock })
   );
   router.use("/api/inaturalist/juego", createGameRouter(gameController, auth));
 
   const partidasController = new PartidasController(
-    makePartidaUseCases({ gameSessionsDao, gameResultsDao, birdsProvider, events })
+    makePartidaUseCases({ gameSessionsDao, gameResultsDao, birdsProvider, events, clock })
   );
   router.use("/partidas", createPartidasRouter(partidasController, auth));
 
-  const metricsController = new MetricsController(makeMetricsUseCases({ usersDao, gameResultsDao, connectionLogsDao }));
+  const metricsController = new MetricsController(makeMetricsUseCases({ usersDao, gameResultsDao, connectionLogsDao, clock }));
   router.use("/api/inaturalist/metricas", createMetricsRouter(metricsController, auth));
 
-  const activityController = new ActivityController(makeActivityUseCases({ connectionLogsDao, events }));
+  const activityController = new ActivityController(makeActivityUseCases({ connectionLogsDao, events, clock }));
   router.use("/api", createActivityRouter(activityController, auth));
 
   // Retornamos el router principal listo para ser usado por Express

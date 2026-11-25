@@ -16,10 +16,10 @@ const emailJugador = (n) => `jugador${String(n).padStart(3, "0")}@example.com`;
  * Simula una partida terminada igual que el juego real: 10 aves, aciertos según la
  * "precisión" del jugador, y racha y puntos con las mismas reglas que /juego/respuesta.
  */
-async function simularPartida(user, precision, { gameSessionsDao, gameResultsDao }) {
+async function simularPartida(user, precision, { gameSessionsDao, gameResultsDao, clock }) {
   const aves = Object.entries(NOMBRES_ARGENTINOS).map(([id, nombre]) => ({ id: Number(id), nombre }));
   const lote = elegir(aves, PREGUNTAS_POR_PARTIDA);
-  const inicio = Date.now() - azar(0, 60) * DIA_MS;
+  const inicio = clock.now() - azar(0, 60) * DIA_MS;
 
   let racha = 0;
   const respuestas = lote.map((ave, i) => {
@@ -64,14 +64,14 @@ async function simularPartida(user, precision, { gameSessionsDao, gameResultsDao
  * métricas tengan datos). Los primeros 3 son moderadores. Todos tienen la misma contraseña.
  * Es idempotente: si el primer jugador ya existe, no hace nada.
  */
-async function seedPlayers({ cantidad, password }, { usersDao, gameSessionsDao, gameResultsDao, hasher }) {
+async function seedPlayers({ cantidad, password }, { usersDao, gameSessionsDao, gameResultsDao, hasher, clock }) {
   if (!cantidad || (await usersDao.getByEmail(emailJugador(1)))) return 0;
 
   // Hasheamos una sola vez: bcrypt es lento a propósito y son todos la misma contraseña
   const passwordHash = await hasher.hash(password);
 
   for (let n = 1; n <= cantidad; n++) {
-    const creado = Date.now() - azar(1, 90) * DIA_MS;
+    const creado = clock.now() - azar(1, 90) * DIA_MS;
     const user = await usersDao.save({
       nombre: unoDe(NOMBRES),
       apellido: unoDe(APELLIDOS),
@@ -81,13 +81,13 @@ async function seedPlayers({ cantidad, password }, { usersDao, gameSessionsDao, 
       is_active: true,
       createdAt: creado,
       updatedAt: creado,
-      lastLogin: Math.min(creado + azar(1, 30) * DIA_MS, Date.now()),
+      lastLogin: Math.min(creado + azar(1, 30) * DIA_MS, clock.now()),
     });
 
     const precision = 0.2 + Math.random() * 0.7; // entre 20% y 90% de aciertos
     const partidas = azar(1, 5);
     for (let p = 0; p < partidas; p++) {
-      await simularPartida(user, precision, { gameSessionsDao, gameResultsDao });
+      await simularPartida(user, precision, { gameSessionsDao, gameResultsDao, clock });
     }
   }
 

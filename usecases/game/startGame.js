@@ -11,7 +11,7 @@ import closeSession from "./closeSession.js";
  *     así el cliente no puede hacer trampa mandando otro nombre de ave.
  */
 async function startGame({ place_id, locale }, actor, deps) {
-  const { gameSessionsDao, birdsProvider } = deps;
+  const { gameSessionsDao, birdsProvider, clock } = deps;
 
   const preguntas = await fetchQuestions({ place_id, locale }, birdsProvider);
 
@@ -32,7 +32,7 @@ async function startGame({ place_id, locale }, actor, deps) {
     puntos_totales: 0,
     total_intentos: 0,
     total_aciertos: 0,
-    createdAt: Date.now(),
+    createdAt: clock.now(),
     terminadaAt: null,
   });
 }

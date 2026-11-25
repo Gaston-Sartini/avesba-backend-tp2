@@ -107,6 +107,7 @@ Servidor AvesBA corriendo en http://localhost:8000
 | `BIRDS_PROVIDER` | `inaturalist` / `fake` | Aves reales de internet, o 15 aves inventadas para trabajar sin conexión. |
 | `NOTIFIER_TYPE` | `console` / `file` / `none` | Dónde van los avisos de los eventos: consola, `notifications.log` o ninguno. |
 | `NOTIFICATIONS_LOG_PATH` | `notifications.log` | El archivo donde escribe el notificador de archivo. |
+| `CLOCK_NOW` | vacío / fecha ISO | Vacío = la hora real. Con una fecha, la app usa siempre esa hora ("viajar en el tiempo" para probar). |
 | `JWT_SECRET` | texto largo | **Obligatorio.** Con esto se firman los tokens. Sin él, la app no arranca. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 15 | Cuánto dura el token de acceso. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | Cuánto dura el token para renovar. |

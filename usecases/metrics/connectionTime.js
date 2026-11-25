@@ -21,7 +21,7 @@ function aporteDeHoy(log, inicioHoy, ahora) {
 }
 
 // { hoy_seg, total_seg }: lo que se muestra en "Mis métricas"
-function resumirTiempoConectado(logs, ahora = Date.now()) {
+function resumirTiempoConectado(logs, ahora) {
   const inicioHoy = inicioDelDiaArgentina(ahora);
   const totalMs = logs.reduce((suma, log) => suma + log.tiempo_conectado_ms, 0);
   const hoyMs = logs.reduce((suma, log) => suma + aporteDeHoy(log, inicioHoy, ahora), 0);

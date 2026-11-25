@@ -9,13 +9,13 @@ import EVENTS from "../../events/eventNames.js";
  *  - La contraseña se guarda hasheada, nunca en texto plano.
  * Efecto secundario desacoplado: emite "user.registered" (ej. mail de bienvenida).
  */
-async function createUser({ nombre, apellido, email, password, role = "jugador" }, { usersDao, hasher, events }) {
+async function createUser({ nombre, apellido, email, password, role = "jugador" }, { usersDao, hasher, events, clock }) {
   const existing = await usersDao.getByEmail(email);
   if (existing) {
     throw new AppError("EMAIL_DUPLICATED", `El email ${email} ya está registrado`, 409);
   }
 
-  const now = Date.now();
+  const now = clock.now();
   const user = await usersDao.save({
     nombre,
     apellido,

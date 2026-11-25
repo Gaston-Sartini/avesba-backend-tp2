@@ -12,14 +12,14 @@ function generarPassword(largo = 12) {
  * Caso de Uso: Resetear la contraseña de un usuario (solo admins, lo controla el router).
  * Genera una contraseña nueva al azar y la devuelve UNA vez para que el admin se la pase al usuario.
  */
-async function resetPassword(id, { usersDao, hasher }) {
+async function resetPassword(id, { usersDao, hasher, clock }) {
   const user = await usersDao.getById(id);
   if (!user) {
     throw new AppError("USER_NOT_FOUND", `Usuario ${id} no encontrado`, 404);
   }
 
   const newPassword = generarPassword();
-  await usersDao.update(id, { passwordHash: await hasher.hash(newPassword), updatedAt: Date.now() });
+  await usersDao.update(id, { passwordHash: await hasher.hash(newPassword), updatedAt: clock.now() });
 
   return {
     user_id: user.id,

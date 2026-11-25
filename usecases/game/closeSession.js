@@ -6,13 +6,13 @@ import { resumirRespuestas } from "./gameRules.js";
  * La usan terminar partida (finishGame) e iniciar partida (startGame, para cerrar la anterior).
  * Efecto secundario desacoplado: emite "game.finished".
  */
-async function closeSession(session, { gameSessionsDao, gameResultsDao, events }) {
+async function closeSession(session, { gameSessionsDao, gameResultsDao, events, clock }) {
   const respuestas = await gameResultsDao.getBySession(session.id);
   const resumen = resumirRespuestas(respuestas);
 
   await gameSessionsDao.update(session.id, {
     estado: "terminada",
-    terminadaAt: Date.now(),
+    terminadaAt: clock.now(),
     puntos_totales: resumen.puntos_totales,
     total_intentos: resumen.total_intentos,
     total_aciertos: resumen.total_aciertos,

@@ -8,8 +8,8 @@ import startGame from "../game/startGame.js";
  * Factory de Casos de Uso de Partidas (el CRUD de la entidad Partida).
  * Crear una partida es lo mismo que iniciar el juego: reutiliza startGame.
  */
-function makePartidaUseCases({ gameSessionsDao, gameResultsDao, birdsProvider, events }) {
-  const deps = { gameSessionsDao, gameResultsDao, birdsProvider, events };
+function makePartidaUseCases({ gameSessionsDao, gameResultsDao, birdsProvider, events, clock }) {
+  const deps = { gameSessionsDao, gameResultsDao, birdsProvider, events, clock };
 
   return {
     listPartidas: (filters, actor) => listPartidas(filters, actor, deps),

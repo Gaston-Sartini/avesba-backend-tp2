@@ -4,7 +4,7 @@ import AppError from "../../errors/AppError.js";
  * Caso de Uso: Actualizar nombre, apellido, rol o estado de un usuario (solo admins, lo controla el router).
  * El email y la contraseña NO se cambian por acá.
  */
-async function updateUser(id, changes, { usersDao }) {
+async function updateUser(id, changes, { usersDao, clock }) {
   const existing = await usersDao.getById(id);
   if (!existing) {
     throw new AppError("USER_NOT_FOUND", `Usuario ${id} no encontrado`, 404);
@@ -17,7 +17,7 @@ async function updateUser(id, changes, { usersDao }) {
     ...(apellido !== undefined && { apellido }),
     ...(role !== undefined && { role }),
     ...(is_active !== undefined && { is_active }),
-    updatedAt: Date.now(),
+    updatedAt: clock.now(),
   });
 }
 

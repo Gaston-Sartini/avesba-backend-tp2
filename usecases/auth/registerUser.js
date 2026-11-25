@@ -7,8 +7,8 @@ import issueTokens from "./issueTokens.js";
  * si un endpoint público dejara elegir el rol, cualquiera se registraría como admin
  * (escalada de privilegios). Devuelve los tokens para que quede logueado.
  */
-async function registerUser({ nombre, apellido, email, password }, { usersDao, hasher, tokens, events }) {
-  const user = await createUser({ nombre, apellido, email, password, role: "jugador" }, { usersDao, hasher, events });
+async function registerUser({ nombre, apellido, email, password }, { usersDao, hasher, tokens, events, clock }) {
+  const user = await createUser({ nombre, apellido, email, password, role: "jugador" }, { usersDao, hasher, events, clock });
   return issueTokens(user, tokens);
 }
 
