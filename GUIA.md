@@ -641,6 +641,7 @@ Corre **306 tests** en unos 10 segundos, **sin internet** y **sin tocar tu `data
 
 | Archivo | Qué prueba |
 |---|---|
+| `tests/usecases/` | **Los casos de uso solos**, sin servidor ni base: con los DAO en memoria como doble, un reloj fijo y un bus espía. Cada regla con su caso feliz, el borde, la violación y que el estado no cambió (`answerQuestion`, `logConnection`, `createUser`, `deleteUser`). |
 | `tests/unit/gameRules.test.js` | Puntos por racha, rachas destacadas, porcentajes y mensajes |
 | `tests/unit/buildQuestions.test.js` | Lote de 10 preguntas distintas, 4 opciones con la correcta, error si faltan aves |
 | `tests/unit/buildRanking.test.js` | Orden y desempates del ranking |
